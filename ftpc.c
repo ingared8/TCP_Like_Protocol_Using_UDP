@@ -183,9 +183,9 @@ main(int argc, char * argv[] )
 	server_address.sin_port = htons(PORT_NUM);
 
 	
-	char recvbuffer[MSS];
-	int ack = 1;
-	int c_name_len = sizeof(server_address);
+	//char recvbuffer[MSS];
+	//int ack = 1;
+	//int c_name_len = sizeof(server_address);
 
 	FILE * fp;
 	
@@ -197,11 +197,10 @@ main(int argc, char * argv[] )
 		exit(1);
 		}
 	
-	/*
+	
 	int buffer_size = MSS;
 	int remaining = det_file_size(fp);
-	int * file_size_pointer = &(remaining);
-*/
+	//int * file_size_pointer = &(remaining);
 
 	char * buffer = malloc(sizeof(char)*buffer_size);
 	//memcpy(buffer,file_size_pointer,4);
@@ -217,14 +216,14 @@ main(int argc, char * argv[] )
 	// Create first message for sending critical info
 	first_message * first_msg = (first_message *)malloc(sizeof(first_message));
 	first_msg->file_size = 100;
-	first_msg->file_name = argv[3];		
+	memcpy(first_msg->filename ,argv[3],20);		
 	
 
 	// send the first packet 
 	int buf_count = 0;
 	
 	printf("Sending the first message\n");
-	ack = sendto(client_socket,first_msg, sizeof(first_message), 0, (struct sockaddr *)&server_address, sizeof(server_address));
+	int ack = sendto(client_socket,first_msg, sizeof(first_message), 0, (struct sockaddr *)&server_address, sizeof(server_address));
 
 	while ( ack < 0)
 		{
@@ -249,13 +248,12 @@ main(int argc, char * argv[] )
 		{
 		printf(" Client: Failed to read for buf_count %d\n", buf_count);
 		}
-		memcpy(&tr_msg.body,buffer,buffer_size );
-		ack = sendto(client_socket,&tr_msg,sizeof(tr_msg) , 0, (struct sockaddr *)&server_address, sizeof(server_address));
+		ack = sendto(client_socket,buffer, buffer_size , 0, (struct sockaddr *)&server_address, sizeof(server_address));
 
 		while ( ack < 0)
 		{
 		printf("Client: Failed -- Data transfer failed for buf_count  %d\n", buf_count);
-		ack = sendto(client_socket,&tr_msg,sizeof(tr_msg) , 0, (struct sockaddr *)&server_address, sizeof(server_address));
+		ack = sendto(client_socket,buffer, buffer_size, 0, (struct sockaddr *)&server_address, sizeof(server_address));
 		}
 		remaining -= buffer_size;
 		buf_count++;
@@ -272,14 +270,12 @@ main(int argc, char * argv[] )
 	printf(" Client: Failed to read for buf_count %d\n", buf_count);
 	}
 
-	memcpy(&tr_msg.body,buffer,buffer_size1 );
-
-	ack = sendto(client_socket,&tr_msg,sizeof(tr_msg) , 0, (struct sockaddr *)&server_address, sizeof(server_address));
+	ack = sendto(client_socket,buffer, buffer_size1, 0, (struct sockaddr *)&server_address, sizeof(server_address));
 	
 	while ( ack < 0)
 	{
 	printf("Client: Failed -- Data transfer failed for buf_count  %d\n", buf_count);
-	ack = sendto(client_socket,&tr_msg,sizeof(tr_msg) , 0, (struct sockaddr *)&server_address, sizeof(server_address));
+	ack = sendto(client_socket,buffer, buffer_size1 , 0, (struct sockaddr *)&server_address, sizeof(server_address));
 	}
 	
 	printf("Client: Last Packet sent \n");
