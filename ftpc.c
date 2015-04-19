@@ -9,12 +9,7 @@
 #include <time.h>
 #include <netdb.h>
 
-// This program is to create a file transfer protocol server
-// This program is part of Homework 2
-
-// Assumptions
-// The port through which we are transferring files is PORT_NUM
-// The following attributes define the given problem specifications.
+// This program is to transfer file in form of packets from client to TCPD Client
 
 #define MSS 1000 				
 #define SIZE_OF_BYTES 4
@@ -33,11 +28,7 @@ typedef struct troll_message
 		char body[MSS-header_size];
 	} troll_message;
 
-/* 
-	Determine the file size of the fp
-  	Returns the no of bytes ( int)		
-*/
-
+// Determine file size of the file
 int det_file_size(FILE * fp)
 	{
 		int prev = ftell(fp);
@@ -47,19 +38,48 @@ int det_file_size(FILE * fp)
 		return file_size;
 	}
 
-/*
-int send_udp(client_socket, msg, strlen(msg), 0, server_address, sizeof(server_address))
+/* Functio calls to be implemented as per the project requirements */
+
+ int SOCKET()
 	{
-		int d = sendto(client_socket, msg, strlen(msg), 0, server_address, sizeof(server_address));
-		return d;
+	int d = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+	return d;
 	}
 
-int recv_udp(client_socket, msg, strlen(msg), 0, server_address, sizeof(server_address))
+int BIND(int socket, struct sockaddr_in address)
 	{
-		int d = recvfrom(client_socket, msg, strlen(msg), 0, server_address, sizeof(server_address));
-		return d;
+	int bind_id = bind(socket, (struct sockaddr *)&address, sizeof(address));
+	return bind_id;
 	}
-*/
+
+int ACCEPT()
+	{
+	printf(" Passing Accept function -- (which is a null function) \n");
+	return 1;
+	}
+
+int CONNECT()
+	{
+	printf(" Passing Connect function -- (which is a null function) \n");
+	return 1;
+	}
+
+int SEND(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in address)
+	{
+	int d = sendto(client_socket,&msg,sizeofmsg, 0, (struct sockaddr *)&address, sizeof(address));
+	return d;
+	}
+
+int RECV(int socket, char * buffer, int buf_len ,struct sockaddr_in address, int server_name_len)
+	{
+	int d =recvfrom(socket, buffer, buf_len, 0, (struct sockaddr *)&address, &server_name_len);
+	return d;
+	}
+
+int CLOSE()
+	{
+	printf(" Passing Close function -- (which is a null function) \n");	
+	}	
 
 main(int argc, char * argv[] )
 	{
