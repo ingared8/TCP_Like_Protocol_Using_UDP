@@ -38,7 +38,18 @@ int det_file_size(FILE * fp)
 		return file_size;
 	}
 
-/* Functio calls to be implemented as per the project requirements */
+typedef struct first_message
+	{
+	int file_size;
+	char filename[20];
+	int p1;
+	int p2;
+	int p3;
+	char serevr_ip[50];
+	char client_ip[50];	
+	} first_message;
+
+/* Function calls to be implemented as per the project requirements */
 
  int SOCKET()
 	{
@@ -78,7 +89,8 @@ int RECV(int socket, char * buffer, int buf_len ,struct sockaddr_in address, int
 
 int CLOSE()
 	{
-	printf(" Passing Close function -- (which is a null function) \n");	
+	printf(" Passing Close function -- (which is a null function) \n");
+	return 1;	
 	}	
 
 main(int argc, char * argv[] )
@@ -117,7 +129,11 @@ main(int argc, char * argv[] )
 		exit(0);
 	}
 
+
 	// Every packet sent to troll should contain the destination adress 
+	
+	
+	/*  -- troll message --
 
 	troll_message  tr_msg;
 	struct hostent * dest_addr;
@@ -132,76 +148,88 @@ main(int argc, char * argv[] )
 	bcopy((char *)dest_addr->h_addr, (char *)&tr_msg.header.sin_addr.s_addr, dest_addr->h_length);
 	memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
 
+	*/
+
 	// Adress declarations
-	struct sockaddr_in server_address;
+	
 	int new_client,client_length;
 	int pid;
 
-	// Socket creation
-	printf("Client: Creating socket at server end\n");
+	/* Socket creation */
+	printf("Client: Creating socket at client end\n");
 
-	int client_socket = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+	int client_socket = SOCKET();
 	if (client_socket < 0)
 			{
 			printf("Client: Socket error: %d\n",errno);
 			exit(0);
 			}
 	printf("Client: Socket succesfull\n");
-
+	
+	
+	// Get the adress of the TCPD_client which is running on the same machine as ftpc.c //
+	struct sockaddr_in server_address;
 	struct hostent * server_addr;
 	server_addr = gethostbyname("localhost");
 
 	if (server_addr == NULL)
 	{
 			printf("Client: Could not get server hostanme: %d\n",errno);
+			exit(0);
 	}
 
-
-	// Multiple ways to assign server adress 
 	memcpy(&server_address.sin_addr, server_addr->h_addr_list[0],server_addr->h_length);
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(PORT_NUM);
 
-
+	
 	char recvbuffer[MSS];
 	int ack = 1;
 	int c_name_len = sizeof(server_address);
 
 	FILE * fp;
-
+	
+	// Open the file which needs to be sent to server
 	fp = fopen(filename,"rb");
 	if (fp == NULL)
 		{
 		printf("Can't open the given file %s : Errono %d\n",filename,errno);
 		exit(1);
 		}
-
-	int buffer_size = MSS-header_size;
+	
+	/*
+	int buffer_size = MSS;
 	int remaining = det_file_size(fp);
 	int * file_size_pointer = &(remaining);
+*/
 
 	char * buffer = malloc(sizeof(char)*buffer_size);
-	memcpy(&tr_msg.body,file_size_pointer,4);
-	memcpy(&tr_msg.body+4,filename,20);
+	//memcpy(buffer,file_size_pointer,4);
+	//memcpy(buffer+4,filename,20);
 	
-	char filename1[20];
-	char zza[4];
-	memcpy(zza, &tr_msg.body,4);
-	memcpy(filename1, &tr_msg.body+4, 20);
+	//char filename1[20];
+	//char zza[4];
+	//memcpy(zza, &tr_msg.body,4);
+	//memcpy(filename1, &tr_msg.body+4, 20);
 
-	int fdsa = *(int *)(zza);
+	//int fdsa = *(int *)(zza);
 
+	// Create first message for sending critical info
+	first_message * first_msg = (first_message *)malloc(sizeof(first_message));
+	first_msg->file_size = 100;
+	first_msg->file_name = argv[3];		
 	
+
 	// send the first packet 
 	int buf_count = 0;
 	
 	printf("Sending the first message\n");
-	ack = sendto(client_socket,&tr_msg,sizeof(tr_msg) , 0, (struct sockaddr *)&server_address, sizeof(server_address));
+	ack = sendto(client_socket,first_msg, sizeof(first_message), 0, (struct sockaddr *)&server_address, sizeof(server_address));
 
 	while ( ack < 0)
 		{
 		printf("Client: Failed -- Data transfer failed for buf_count  %d\n", buf_count);
-		ack = sendto(client_socket,&tr_msg,sizeof(tr_msg) , 0, (struct sockaddr *)&server_address, sizeof(server_address));
+		ack = sendto(client_socket,first_msg, sizeof(first_message), 0, (struct sockaddr *)&server_address, sizeof(server_address));
 		}
 
 	time_t now;
