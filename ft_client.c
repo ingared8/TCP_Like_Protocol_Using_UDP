@@ -19,10 +19,11 @@ main(int argc, char * argv[] )
 	char * server_host;
 	char * dest_host; 
 	char * filename;
-	int PORT_NUM;
+	int PORT_NUM_RECV;
+	int PORT_NUM_SEND;
 	int PORT_NUM_SERVER;
-	PORT_NUM_RECV = 5500;
-	PORT_NUM_SEND = 5555
+	PORT_NUM_RECV = 5555;
+	PORT_NUM_SEND = 5500;
 
 	// Check for input arguments
 	if (argc > 1)
@@ -47,19 +48,19 @@ main(int argc, char * argv[] )
 	printf("Client: Creating socket at client end\n");
 
 	int client_socket_send = SOCKET();
-	check_socket(client_socket,"Client Sending socket ","Client")
+	check_socket(client_socket_send,"Client Sending socket ","Client");
 	
 	int client_socket_listen = SOCKET();
-	check_socket(client_socket,"Client Receiving socket ","Client")
+	check_socket(client_socket_listen,"Client Receiving socket ","Client");
 	
 	
 	// Get the adress of the TCPD_client which is running on the same machine as ftpc.c //
 	struct sockaddr_in tcpd_client_adress_send = get_sockaddr_send("localhost", PORT_NUM_SEND);
 	struct sockaddr_in tcpd_client_adress_recv = get_sockaddr_recv(PORT_NUM_RECV);
-	int tcpd_client_len = sizeof(tcpd_client_adress);
+	int tcpd_client_adress_recv_len = sizeof(tcpd_client_adress_recv);
 	
 	// Bind the socket
-	int bind_id = Bind(client_socket_listen, tcpd_client_adress_recv);
+	int bind_id = BIND(client_socket_listen, tcpd_client_adress_recv);
 	check_bind(bind_id, "Client/TCPD receiving socket", "client");
 		
 	// Open the file which needs to be sent to server
@@ -75,64 +76,70 @@ main(int argc, char * argv[] )
 	int filesize = det_file_size(fp);
 	int remaining = filesize;
 	int packet_count = 0;
+	int buffer_size = MSS;
 	
 	send_buffer * sendbuffer = malloc(sizeof(send_buffer));
-	ack_buffer * recv_buffer = malloc(sizeof(ack_buffer));	
+	ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));	
 	first_message * first_msg = malloc(sizeof(first_message));
 	
 	// send the first packet  
-	create_first_message(first_msg, filesize ,filename, argv[1], client_ip, int port);
+	create_first_message(first_msg, filesize ,filename, argv[1], PORT_NUM_SERVER);
 	printf("Sending the first message\n");
-	int ack = SEND(client_socket_send,(char *)first_message, sizeof(first_message), tcpd_client_adress_send); 
+	int ack = SEND(client_socket_send,(char *)first_msg, sizeof(first_message), tcpd_client_adress_send); 
 	//int ack = sendto(client_socket_send,(char *)first_message, sizeof(first_message), 0, (struct sockaddr *)&server_address, sizeof(server_address));
-	printf("TCPD: The message received is buf_count %d:\n",ack);
+	printf(" Client :Buf_count %d \n",packet_count);
 	while ( ack < 0)
 		{
-		printf("Client: Failed -- Data transfer failed for buf_count  %d\n", buf_count);
-		int ack = SEND(client_socket_send,(char *)first_message, sizeof(first_message), tcpd_client_adress_send);
-		ack = sendto(client_socket,(char *)buffer, buffer_size, 0, (struct sockaddr *)&server_address, sizeof(server_address));
+		printf("Client: Failed -- Data transfer failed for buf_count  %d\n", packet_count);
+		int ack = SEND(client_socket_send,(char *)first_msg, sizeof(first_message), tcpd_client_adress_send);
+		//ack = sendto(client_socket,(char *)buffer, buffer_size, 0, (struct sockaddr *)&server_address, sizeof(server_address));
 		}
 		
 	time_t now;
 	char buff[100];
 	int len;
 	int ack_tcpd;
+	int ack_file_size;
 	
 	// Send the packets in a loop
 	
 	while ( remaining/buffer_size >= 1 )
 	{
 		printf("Server: a, %d, %d \n", remaining, remaining/buffer_size);
-		printf(" Client :Buf_count %d \n",buf_count);
+		printf(" Client :Packet_count %d \n",packet_count);
 		
-		len = fread(buffer,sizeof(char),buffer_size,fp);
+		len = fread(sendbuffer,sizeof(char),buffer_size,fp);
 		now = time(0);
 		strftime (buff, 100, "%Y-%m-%d %H:%M:%S.000", localtime (&now));
 		printf("Client: %d \n",remaining- buffer_size);
 	
 		if ( len < 0)
 		{
-		printf(" Client: Failed to read for buf_count %d\n", buf_count);
+		printf(" Client: Failed to read for buf_count %d\n", packet_count);
 		}
-		ack = sendto(client_socket,buffer, buffer_size , 0, (struct sockaddr *)&server_address, sizeof(server_address));
-
+		
+		//ack = sendto(client_socket,sendbuffer, buffer_size , 0, (struct sockaddr *)&server_address, sizeof(server_address));	
+		ack = SEND(client_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_client_adress_send);
+		
 		while ( ack < 0)
 		{
-		printf("Client: Failed -- Data transfer failed for buf_count  %d\n", buf_count);
-		ack = sendto(client_socket,buffer, buffer_size, 0, (struct sockaddr *)&server_address, sizeof(server_address));
+		printf("Client: Failed -- Data transfer failed for buf_count  %d\n", packet_count);
+		ack = SEND(client_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_client_adress_send);
+//		ack = sendto(client_socket,buffer, buffer_size, 0, (struct sockaddr *)&server_address, sizeof(server_address));
 		}
 		
 		remaining -= buffer_size;
-		buf_count++;			
+		packet_count++;			
 		
-		ack_tcpd = recvfrom(tcpd_socket, (char *)recv_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&tcpd_client_adress,&tcpd_client_len);
+		ack_tcpd = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer) , tcpd_client_adress_recv, tcpd_client_adress_recv_len);
+		//ack_tcpd = recvfrom(tcpd_socket, (char *)recv_buffer, sizeof(ack_buffer), 0, (struct sockaddr *)&tcpd_client_adress,&tcpd_client_len);
 		if ( ack_tcpd < 0)
 		{
 		printf("Client :TCPD ack Message receive failed \n");
 		}
-		printf("Client :TCPD ack message received is buf_count %d:\n",buf_count);
+		printf("Client :TCPD ack message received is buf_count %d:\n",packet_count);
 		
-		ack_number = (int)recv_buffer->free_size;
+		ack_file_size = ackbuffer->free_size;
 		
 		usleep(10000);
 	}
@@ -140,23 +147,31 @@ main(int argc, char * argv[] )
 	// Sending the last message 
 	
 	int buffer_size1 = remaining;
-	len = fread(buffer,sizeof(char),buffer_size1,fp);
+	len = fread(sendbuffer,sizeof(char),buffer_size1,fp);
 	
 	if ( len < 0)
 	{
-	printf(" Client: Failed to read for buf_count %d\n", buf_count);
+	printf(" Client: Failed to read for buf_count %d\n", packet_count);
 	}
-
-	ack = sendto(client_socket,buffer, buffer_size1, 0, (struct sockaddr *)&server_address, sizeof(server_address));
+	
+	ack = SEND(client_socket_send,(char *)sendbuffer, buffer_size1, tcpd_client_adress_send);
+	//ack = sendto(client_socket,buffer, buffer_size1, 0, (struct sockaddr *)&server_address, sizeof(server_address));
 	
 	while ( ack < 0)
 	{
-	printf("Client: Failed -- Data transfer failed for buf_count  %d\n", buf_count);
-	ack = sendto(client_socket,buffer, buffer_size1 , 0, (struct sockaddr *)&server_address, sizeof(server_address));
+	printf("Client: Failed -- Data transfer failed for buf_count  %d\n", packet_count);
+	ack = SEND(client_socket_send,(char *)sendbuffer, buffer_size1, tcpd_client_adress_send);
+	//ack = sendto(client_socket,buffer, buffer_size1 , 0, (struct sockaddr *)&server_address, sizeof(server_address));
 	}
 	
 	printf("Client: Last Packet sent \n");
-
+	ack_tcpd = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer) , tcpd_client_adress_recv, tcpd_client_adress_recv_len);
+	if ( ack_tcpd < 0)
+	{
+	printf("Client :TCPD ack Message receive failed \n");
+	}
+	printf("Client :TCPD ack message received is buf_count %d:\n",packet_count);
+	
 	// End of ftp
 
 }

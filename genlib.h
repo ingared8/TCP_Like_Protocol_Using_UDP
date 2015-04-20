@@ -90,7 +90,7 @@ if (client_socket < 0)
 	
 // Create first message function to create parameters that needs to be passed 
 
-void create_first_message(first_message * first_msg, int filesize , char * filename, char * server_ip, char * client_ip, int port)
+void create_first_message(first_message * first_msg, int filesize , char * filename, char * server_ip, int port)
 {
 	first_msg->file_size = filesize;
 	memcpy(first_msg->filename, filename, 20); 
@@ -111,7 +111,7 @@ if (bind_id < 0)
 
 /* Function calls to be implemented as per the project requirements */
 
- int SOCKET()
+int SOCKET()
 	{
 	int d = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
 	return d;
