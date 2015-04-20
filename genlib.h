@@ -13,6 +13,7 @@
 
 #define MSS 1000 				
 #define header_size 16
+#define Cyclci_buffer_size 64000
 
 typedef struct troll_message 
 	{
