@@ -37,12 +37,21 @@ typedef struct
 		int packet_no;	
 	} troll_ack;
 
+typedef struct 
+	{
+		int packet_no;	
+	} packet_ack;
+
 
 int main(int argc, char *argv[] )
 {
 char * troll_host;
+
 int PORT_NUM_OUT = 6000;
-int PORT_NUM = 5555;
+int PORT_NUM_OUT_TROLL = 7777;
+int PORT_NUM_OUT_TIMER = 8888;
+int PORT_NUM_OUT_TCPDS = 9999;
+int PORT_NUM_IN = 5555;
 
 if (argc > 1)
 {
@@ -78,7 +87,6 @@ printf("TCPD Client: Socket succesfull\n");
 server_address.sin_family = AF_INET;
 server_address.sin_port = htons(PORT_NUM);
 server_address.sin_addr.s_addr = htons(INADDR_ANY);
-
 
 // Bind the socket
 int bind_id = bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -120,14 +128,30 @@ int s_name_len = sizeof(server_address);
 int buf_count = 0;
 int sent_count = 0;
 
-//first_message * first_msg;
-//first_msg = (first_message *)malloc(sizeof(struct first_message));
+//first_message 
+
+int mm = recvfrom(server_socket, (char *)recvbuffer, MSS, 0, (struct sockaddr *)&server_address,&s_name_len);
+if ( mm < 0)
+{
+printf("TCPD Client : First Message receive failed \n");
+}
+printf("TCPD Client: First message received \n");
+
+char * server_ip = malloc(sizeof(char)*100);
+
+int ack = sendto(troll_socket, recvbuffer, buf_len, 0, (struct sockaddr *)&troll_address, sizeof(troll_address));
+if ( ack < 0)
+{
+printf("TCPD troll: Failed --> The message sent failed , buf_count %d\n", sent_count);
+}
+printf("TCPD: The message sent is buf_count %d:\n",sent_count);
+
 	
 while ( 1==1)
 {
 
 // Receive from client 
-int mm = recvfrom(server_socket, (char *)first_msg, sizeof(first_message), 0, (struct sockaddr *)&server_address,&s_name_len);
+mm = recvfrom(server_socket, (char *)first_msg, sizeof(first_message), 0, (struct sockaddr *)&server_address,&s_name_len);
 if ( mm < 0)
 {
 printf("TCPD: Message receive failed \n");
