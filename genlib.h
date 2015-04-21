@@ -175,6 +175,27 @@ int SEND(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in addres
 	int d = sendto(client_socket,msg,sizeofmsg, 0, (struct sockaddr *)&address, sizeof(address));
 	return d;
 	}
+	
+int SENDD(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in address, struct sockaddr_in address_recv)
+	{
+		
+		int d = SEND(client_socket,(char *)msg, sizeofmsg, address);
+		while ( d < 0)
+		{
+			d = SEND(client_socket,(char *)msg, sizeofmsg, address);
+		}
+		
+		int zz = sizeof(address_recv);
+		ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
+		d = RECV(client_socket, (char *)ackbuffer, sizeof(ack_buffer),address_recv ,zz);
+
+		while ( d < 0)
+		{
+			d = RECV(client_socket, (char *)ackbuffer, sizeof(ack_buffer) ,address_recv ,zz);
+		}
+			
+		return d;
+	}
 
 int RECV(int socket, char * buffer, int buf_len ,struct sockaddr_in address, int server_name_len)
 	{
