@@ -43,6 +43,7 @@ typedef struct
 	char filename[20];
 	char server_ip[100];
 	int server_port;
+	char type[5];
 	} first_message;
 
 // Determine file size of the file
@@ -103,6 +104,7 @@ struct sockaddr_in get_sockaddr_recv(int port)
 	address.sin_addr.s_addr = htons(INADDR_ANY);
 	return address;
 }
+
 	
 // Check Socket for Error
 void check_socket(int client_socket, char * socketname, char * type)
@@ -123,6 +125,7 @@ void create_first_message(first_message * first_msg, int filesize , char * filen
 	memcpy(first_msg->filename, filename, 20); 
 	memcpy(first_msg->server_ip, server_ip, 100);
 	first_msg->server_port = port;
+	//first_msg->type;
 }	
 
 // check bind function
@@ -150,10 +153,15 @@ int BIND(int socket, struct sockaddr_in address)
 	return bind_id;
 	}
 
-int ACCEPT()
+int ACCEPT(int socket, char * buffer, int buf_len ,struct sockaddr_in address, int server_name_len)
 	{
-	printf(" Passing Accept function -- (which is a null function) \n");
-	return 1;
+		
+	int d = recvfrom(socket, buffer, buf_len, 0, (struct sockaddr *)&address, &server_name_len);
+	while ( d < 0)
+		{
+			d = recvfrom(socket, buffer, buf_len, 0, (struct sockaddr *)&address, &server_name_len);
+		}
+	return d;
 	}
 
 int CONNECT()

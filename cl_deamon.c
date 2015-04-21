@@ -51,33 +51,43 @@ check_socket(tcpd_timer_socket_listen,"TCPD -Timer Receiving socket ","TCPD Clie
 struct sockaddr_in tcpd_client_adress_send = get_sockaddr_send("localhost", PORT_NUM_OUT_CLIENT);
 struct sockaddr_in tcpd_client_adress_recv = get_sockaddr_recv(PORT_NUM_IN_CLIENT);
 int tcpd_client_adress_recv_len = sizeof(tcpd_client_adress_recv);
+
 struct sockaddr_in tcpd_troll_adress_send = get_sockaddr_send("localhost", PORT_NUM_OUT_TROLL);
+struct sockaddr_in tcpd_tcpds_adress_recv = get_sockaddr_recv(PORT_NUM_IN_TROLL);
+int tcpd_tcpds_adress_recv_len = sizeof(tcpd_tcpds_adress_recv);
+
+struct sockaddr_in tcpd_timer_adress_send = get_sockaddr_send("localhost", PORT_NUM_OUT_TIMER);
+struct sockaddr_in tcpd_timer_adress_recv = get_sockaddr_recv(PORT_NUM_IN_TIMER);
+int tcpd_timer_adress_recv_len = sizeof(tcpd_timer_adress_recv);
+
 
 // Bind the socket
 int bind_id = BIND(tcpd_client_socket_listen, tcpd_client_adress_recv);
 check_bind(bind_id, "Client/TCPD receiving socket", "TCPD client");
 
+int bind_id2 = BIND(tcpd_tcpds_socket_listen, tcpd_tcpds_adress_recv);
+check_bind(bind_id2, "TCPD Client/ TCPDS server receiving socket", "TCPD client");
+
+int bind_id3 = BIND(tcpd_timer_socket_listen, tcpd_timer_adress_recv);
+check_bind(bind_id3, "TCPD Client/ Timer receiving socket", "TCPD client");
+
 // Create a cyclic buffer and create the read and write pointers
 circular_buffer * cb = malloc(sizeof(circular_buffer));
-printf("Fail1\n");
 ring_buffer_init(cb, RING_BUFFER_SIZE);
-printf("Fail1\n");
+
 
 // Start listening for packets 
-
-send_buffer * recvbuffer = malloc(sizeof(send_buffer));
 ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
+send_buffer * recvbuffer = malloc(sizeof(send_buffer));
 first_message * first_msg = malloc(sizeof(first_message));
-troll_message  tr_msg;
-troll_message tr_msg2;
+troll_message tr_msg;  	// Send to TCPDS
+troll_message tr_msg2; 	// Recv from TCPDS
 	
-// Receive and Send First packet 
+// Receive First packet for connect establishment
 printf("TCPD Client: Read the first message\n");
 int mm =  RECV(tcpd_client_socket_listen, (char *)first_msg, sizeof(first_message),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
 printf("TCPD Client :packet_count %d \n",packet_count);
 printf("TCPD Client: Send the first message\n");
-struct sockaddr_in tcpd_tcpds_header_adress = get_sockaddr_send(first_msg->server_ip, PORT_NUM_IN_TROLL);
-int tcpd_tcpds_header_adress_len = sizeof(tcpd_tcpds_header_adress);
 
 // Know the IP adress and port number of server
 printf(" The first message, file_size is %d \n", first_msg->file_size);
@@ -88,9 +98,13 @@ printf(" The first message, server_ip %s \n", first_msg->server_ip);
 tr_msg.header = get_sockaddr_send_troll(first_msg->server_ip, PORT_NUM_OUT_TCPDS);
 memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
 memcpy(&tr_msg.body,first_msg,sizeof(first_message));
+
+// Send first message to TCPDS via troll
 mm = SEND(tcpd_troll_socket_send, (char *)&tr_msg,sizeof(troll_message),tcpd_troll_adress_send);
 printf(" Message sent to the TCPD Server \n");
-mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_header_adress,tcpd_tcpds_header_adress_len);
+mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
+
+// Redundant
 memcpy(first_msg,&tr_msg2.body,sizeof(first_message));
 printf(" Message received from the TCPD Server \n");
 printf(" The first message, file_size is %d \n", first_msg->file_size);
