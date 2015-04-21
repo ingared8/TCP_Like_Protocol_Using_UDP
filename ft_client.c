@@ -16,8 +16,6 @@ main(int argc, char * argv[] )
 	{
 
 	// Declarations 
-	char * server_host;
-	char * dest_host; 
 	char * filename;
 	int PORT_NUM_RECV;
 	int PORT_NUM_SEND;
@@ -30,9 +28,7 @@ main(int argc, char * argv[] )
 	{
 		printf(" The remote, destination IP passed is %s\n",argv[1]);
 		printf(" The Destination Port number passed  is %s\n",argv[2]);
-		printf(" The file to be transferred is %s\n",argv[3]);
-		
-		server_host = argv[1];
+		printf(" The file to be transferred is %s\n",argv[3]);	
 		PORT_NUM_SERVER = atoi(argv[2]);
 		filename = argv[3];
 	}
@@ -125,7 +121,7 @@ main(int argc, char * argv[] )
 		{
 		printf("Client: Failed -- Data transfer failed for buf_count  %d\n", packet_count);
 		ack = SEND(client_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_client_adress_send);
-//		ack = sendto(client_socket,buffer, buffer_size, 0, (struct sockaddr *)&server_address, sizeof(server_address));
+		// ack = sendto(client_socket,buffer, buffer_size, 0, (struct sockaddr *)&server_address, sizeof(server_address));
 		}
 		
 		remaining -= buffer_size;

@@ -16,11 +16,11 @@
 int main(int argc, char *argv[] )
 {
 		 
-int PORT_NUM_IN_SERVER = 5500;
-int PORT_NUM_OUT_SERVER = 5555;
-int PORT_NUM_IN_TROLL = 7700;
-int PORT_NUM_OUT_TROLL = 7777;
-int PORT_NUM_OUT_TCPDC = 7700;
+int PORT_NUM_IN_SERVER = 7700;
+int PORT_NUM_OUT_SERVER = 7777;
+int PORT_NUM_IN_TROLL = 6600;
+int PORT_NUM_OUT_TROLL = 6666;
+int PORT_NUM_OUT_TCPDC = 3300;
 int packet_count = 0;
 
 printf("TCPD Client: The TCPD Client started \n");
@@ -77,8 +77,6 @@ printf(" The first message, server_ip %s \n", first_msg->server_ip);
 troll_message  tr_msg;
 tr_msg.header = get_sockaddr_send(server_ip, PORT_NUM_OUT_TCPDS);
 memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
-
-
 
 // Start listening for files and start writing in the circular buffer
 int ack;

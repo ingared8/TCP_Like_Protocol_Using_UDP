@@ -16,13 +16,13 @@
 int main(int argc, char *argv[] )
 {
 		 
-int PORT_NUM_IN_CLIENT = 5500;
-int PORT_NUM_OUT_CLIENT = 5555;
-int PORT_NUM_IN_TROLL = 7700;
-int PORT_NUM_OUT_TROLL = 7777;
-int PORT_NUM_IN_TIMER = 8800;
-int PORT_NUM_OUT_TIMER = 8888;
-int PORT_NUM_OUT_TCPDS = 9999;
+int PORT_NUM_IN_CLIENT = 2200;
+int PORT_NUM_OUT_CLIENT = 2222;
+int PORT_NUM_IN_TROLL = 3300;
+int PORT_NUM_OUT_TROLL = 3333;
+int PORT_NUM_IN_TIMER = 4400;
+int PORT_NUM_OUT_TIMER = 4444;
+int PORT_NUM_OUT_TCPDS = 6600;
 int packet_count = 0;
 
 printf("TCPD Client: The TCPD Client started \n");
