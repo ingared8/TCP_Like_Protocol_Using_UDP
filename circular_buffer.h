@@ -72,6 +72,7 @@ int cb_push_data(circular_buffer *cb, char *item, int size)
 			}
 		cb->available -= size;
 		cb->used += size;
+		printf("CB: Data of size %d units  is pushed , used is %d , free is %d \n", size,cb->used,cb->available);
 		return cb->available; 
 	}
 }
@@ -100,6 +101,7 @@ int cb_pop_data(circular_buffer *cb, char *item, int size)
 			}
 		cb->available += size;
 		cb->used -= size;
+		printf("CB: Data of size %d units popped , used is %d , free is %d \n",size,cb->used,cb->available);
 		return cb->used; 
 	}
 }

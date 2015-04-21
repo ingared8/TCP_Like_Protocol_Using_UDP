@@ -20,8 +20,8 @@ main(int argc, char * argv[] )
 	int PORT_NUM_RECV;
 	int PORT_NUM_SEND;
 	int PORT_NUM_SERVER;
-	PORT_NUM_RECV = 5555;
-	PORT_NUM_SEND = 5500;
+	PORT_NUM_RECV = 2222;
+	PORT_NUM_SEND = 2200;
 
 	// Check for input arguments
 	if (argc > 1)
@@ -82,6 +82,7 @@ main(int argc, char * argv[] )
 	create_first_message(first_msg, filesize ,filename, argv[1], PORT_NUM_SERVER);
 	printf("Client: Sending the first message\n");
 	int ack = SEND(client_socket_send,(char *)first_msg, sizeof(first_message), tcpd_client_adress_send); 
+	printf("The ack is %d\n", ack);
 	//int ack = sendto(client_socket_send,(char *)first_message, sizeof(first_message), 0, (struct sockaddr *)&server_address, sizeof(server_address));
 	printf(" Client :Buf_count %d \n",packet_count);
 	while ( ack < 0)

@@ -52,7 +52,6 @@ struct sockaddr_in tcpd_client_adress_send = get_sockaddr_send("localhost", PORT
 struct sockaddr_in tcpd_client_adress_recv = get_sockaddr_recv(PORT_NUM_IN_CLIENT);
 int tcpd_client_adress_recv_len = sizeof(tcpd_client_adress_recv);
 struct sockaddr_in tcpd_troll_adress_send = get_sockaddr_send("localhost", PORT_NUM_OUT_TROLL);
-//struct sockaddr_in tcpd_header_adress = get_sockaddr_send("localhost", PORT_NUM_OUT_CLIENT);
 
 // Bind the socket
 int bind_id = BIND(tcpd_client_socket_listen, tcpd_client_adress_recv);
@@ -69,28 +68,34 @@ printf("Fail1\n");
 send_buffer * recvbuffer = malloc(sizeof(send_buffer));
 ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
 first_message * first_msg = malloc(sizeof(first_message));
-
-// Create the header file to add to messages to troll
 troll_message  tr_msg;
-tr_msg.header = get_sockaddr_send(server_ip, PORT_NUM_OUT_TCPDS);
-memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
+troll_message tr_msg2;
 	
 // Receive and Send First packet 
 printf("TCPD Client: Read the first message\n");
 int mm =  RECV(tcpd_client_socket_listen, (char *)first_msg, sizeof(first_message),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
 printf("TCPD Client :packet_count %d \n",packet_count);
 printf("TCPD Client: Send the first message\n");
-memcpy(&tr_msg.body,first_msg,sizeof(first_message));
-zz = SEND(tcpd_troll_socket_send, (char *)&tr_msg,sizeof(tr_msg),tcpd_troll_adress_send);
-
+struct sockaddr_in tcpd_tcpds_header_adress = get_sockaddr_send(first_msg->server_ip, PORT_NUM_IN_TROLL);
+int tcpd_tcpds_header_adress_len = sizeof(tcpd_tcpds_header_adress);
 
 // Know the IP adress and port number of server
-char server_ip[100]; 
-memcpy(server_ip,first_msg->server_ip,100);
 printf(" The first message, file_size is %d \n", first_msg->file_size);
 printf(" The first message, port no is %d \n", first_msg->server_port);	
 printf(" The first message, server_ip %s \n", first_msg->server_ip);	
 
+// Create the header file to add to messages to troll
+tr_msg.header = get_sockaddr_send_troll(first_msg->server_ip, PORT_NUM_OUT_TCPDS);
+memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
+memcpy(&tr_msg.body,first_msg,sizeof(first_message));
+mm = SEND(tcpd_troll_socket_send, (char *)&tr_msg,sizeof(troll_message),tcpd_troll_adress_send);
+printf(" Message sent to the TCPD Server \n");
+mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_header_adress,tcpd_tcpds_header_adress_len);
+memcpy(first_msg,&tr_msg2.body,sizeof(first_message));
+printf(" Message received from the TCPD Server \n");
+printf(" The first message, file_size is %d \n", first_msg->file_size);
+printf(" The first message, port no is %d \n", first_msg->server_port);	
+printf(" The first message, server_ip %s \n", first_msg->server_ip);	
 
 // Start listening for files and start writing in the circular buffer
 int ack;
@@ -114,9 +119,9 @@ while (1==1)
 	// Prepare data from buffer for troll 
 	int usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
 	
-	if (used > 0)
+	if (usd > 0)
 		{
-		ack = SEND(,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);	
+		ack = SEND(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);	
 		}
 		
 	while ( ack < 0)

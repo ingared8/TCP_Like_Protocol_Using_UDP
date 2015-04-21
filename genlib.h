@@ -54,13 +54,33 @@ int det_file_size(FILE * fp)
 		fseek(fp,prev,SEEK_SET); //go back to where we were
 		return file_size;
 	}
+
+// Create a socket adress to be added for a troll message
+struct sockaddr_in get_sockaddr_send_troll(char * ip_address, int port)
+{
+	struct sockaddr_in server_address;
+	struct hostent * server_addr;
+	server_addr = gethostbyname(ip_address);
+
+	if (server_addr == NULL)
+	{
+			printf("Client: Could not get server hostanme: %d\n",errno);
+			exit(0);
+	}
+
+	memcpy(&server_address.sin_addr, server_addr->h_addr_list[0],server_addr->h_length);
+	server_address.sin_family = htons(AF_INET);
+	server_address.sin_port = htons(port);
+	return server_address;
+}
+
 	
 // Create a socket address based on the ip_adress and port 
 struct sockaddr_in get_sockaddr_send(char * ip_address, int port)
 {
 	struct sockaddr_in server_address;
 	struct hostent * server_addr;
-	server_addr = gethostbyname("localhost");
+	server_addr = gethostbyname(ip_address);
 
 	if (server_addr == NULL)
 	{
@@ -101,7 +121,7 @@ void create_first_message(first_message * first_msg, int filesize , char * filen
 {
 	first_msg->file_size = filesize;
 	memcpy(first_msg->filename, filename, 20); 
-	memcpy(first_msg->server_ip, filename, 100);
+	memcpy(first_msg->server_ip, server_ip, 100);
 	first_msg->server_port = port;
 }	
 

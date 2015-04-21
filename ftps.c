@@ -20,21 +20,17 @@ main(int argc, char * argv[] )
 		}
 	else
 		{
-			printf(" Server: The Server is ( listening at) Port number  %s\n",PORT_NUM_RECV);
+			printf(" Server: The Server is ( listening at) Port number  %d\n",PORT_NUM_RECV);
 		}
 		
-	char * server_host;
-	char * dest_host; 
-	char * filename;
-	
 	// Sockets Declarations
 	printf("Server: Creating socket at client end\n");
 
 	int server_socket_send = SOCKET();
-	check_socket(server_socket_send,"Client Sending socket ","Client");
+	check_socket(server_socket_send,"Client Sending socket ","Server");
 	
 	int server_socket_listen = SOCKET();
-	check_socket(server_socket_listen,"Client Receiving socket ","Client");
+	check_socket(server_socket_listen,"Client Receiving socket ","Server");
 	
 	// Get the adress of the TCPD_server which is running on the same machine as ftps.c //
 	struct sockaddr_in tcpd_server_adress_send = get_sockaddr_send("localhost", PORT_NUM_SEND);
@@ -51,9 +47,10 @@ main(int argc, char * argv[] )
 	int packet_count = 0;
 	int buffer_size = MSS;
 	troll_message tr_msg;
+	first_message * first_msg = malloc(sizeof(first_message));
 		
 	// Receive the first message 
-	int mm =  RECV(server_socket_listen, (char *)&tr_msg, sizeof(troll_message),tcpd_server_adress_recv, tcpd_server_adress_recv_len);
+	int mm =  RECV(server_socket_listen, (char *)first_msg, sizeof(first_message),tcpd_server_adress_recv, tcpd_server_adress_recv_len);
 	printf("Server :packet_count %d \n",packet_count);
 	
 	printf("Server: The first message, file_size is %d \n", first_msg->file_size);
