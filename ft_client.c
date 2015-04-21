@@ -84,7 +84,7 @@ main(int argc, char * argv[] )
 	
 	// send the first packet  
 	create_first_message(first_msg, filesize ,filename, argv[1], PORT_NUM_SERVER);
-	printf("Sending the first message\n");
+	printf("Client: Sending the first message\n");
 	int ack = SEND(client_socket_send,(char *)first_msg, sizeof(first_message), tcpd_client_adress_send); 
 	//int ack = sendto(client_socket_send,(char *)first_message, sizeof(first_message), 0, (struct sockaddr *)&server_address, sizeof(server_address));
 	printf(" Client :Buf_count %d \n",packet_count);
@@ -105,8 +105,8 @@ main(int argc, char * argv[] )
 	
 	while ( remaining/buffer_size >= 1 )
 	{
-		printf("Server: a, %d, %d \n", remaining, remaining/buffer_size);
-		printf(" Client :Packet_count %d \n",packet_count);
+		printf("Client: a, %d, %d \n", remaining, remaining/buffer_size);
+		printf("Client :Packet_count %d \n",packet_count);
 		
 		len = fread(sendbuffer,sizeof(char),buffer_size,fp);
 		now = time(0);
@@ -115,7 +115,7 @@ main(int argc, char * argv[] )
 	
 		if ( len < 0)
 		{
-		printf(" Client: Failed to read for buf_count %d\n", packet_count);
+		printf("Client: Failed to read for buf_count %d\n", packet_count);
 		}
 		
 		//ack = sendto(client_socket,sendbuffer, buffer_size , 0, (struct sockaddr *)&server_address, sizeof(server_address));	
