@@ -81,7 +81,7 @@ int cb_pop_data(circular_buffer *cb, char *item, int size)
 {
     if((cb->used) < size)  
         {
-			printf("CB: The data could not be read , there is no enough \n");
+			printf("CB: The data could not be read , there is no enough data\n");
 			return (size - cb->used);
 		}
 	else

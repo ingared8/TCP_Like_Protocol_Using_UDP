@@ -62,7 +62,8 @@ main(int argc, char * argv[] )
 	
 	int file_remaining = first_msg->file_size;
 	FILE * fp;
-	fp = fopen(	strcat("new", first_msg->filename),"wb");
+	char * newfilename = "newfile.txt"; 
+	fp = fopen(	newfilename,"wb");
 
 	while (file_remaining/buffer_size >= 1)
 	{

@@ -59,8 +59,11 @@ ring_buffer_init(cb, RING_BUFFER_SIZE);
 
 // Start listening for packets 
 ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
-send_buffer * sendbuffer = malloc(sizeof(send_buffer));
+ack2_buffer * ack2buffer = malloc(sizeof(ack2_buffer));
+//send_buffer * sendbuffer = malloc(sizeof(send_buffer));
 first_message * first_msg = malloc(sizeof(first_message));
+char * sendbuffer = malloc(sizeof(send_buffer));
+int buffer_size = 1;
 troll_message tr_msg;		// Recv from TCPDC
 troll_message tr_msg2; 	   // Send to TCPDC
 
@@ -81,31 +84,26 @@ printf(" The first message, server_ip %s \n", first_msg->server_ip);
 tr_msg2 = tr_msg;
 tr_msg2.header.sin_port = htons(PORT_NUM_OUT_TCPDC);
 
-//memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
-//memcpy(&tr_msg2.body,&tr_msg.body,sizeof(first_message));
-
 // Create the header file to add to messages to troll
 mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg2, sizeof(troll_message),tcpd_troll_adress_send); 
-
- //tr_msg.header = get_sockaddr_send_troll(tr_msg.header. , PORT_NUM_OUT_TCPDC);
-//memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
 
 // Start listening for files and start writing in the circular buffer
 int ack;
 int rem;
 int usd;
+int seq = 0;
 while (1==1)
 {
-	mm =  RECV(tcpd_tcpdc_socket_listen, (char *)&tr_msg, sizeof(send_buffer),tcpd_troll_adress_recv, tcpd_troll_adress_recv_len);
-	printf("TCPD Client :packet_count %d \n",packet_count);
+	mm =  RECV(tcpd_tcpdc_socket_listen, (char *)&tr_msg, sizeof(troll_message),tcpd_troll_adress_recv, tcpd_troll_adress_recv_len);
+	printf("TCPD Server :packet_count %d \n",packet_count);
 
 	int rem = cb_push_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
 	
 	// Send ack for ftpc/client with remaining size
 	if (rem > 0)
 		{
-			ackbuffer->free_size = rem; 
-			ack = SEND(tcpd_server_socket_send, (char*)ackbuffer, sizeof(ack_buffer),tcpd_server_adress_send);
+			ack2buffer->seq_no = packet_count; 
+			ack = SEND(tcpd_server_socket_send, (char*)ack2buffer, sizeof(ack2_buffer),tcpd_server_adress_send);
 		}
 		
 	// Prepare data from buffer for troll to client
@@ -115,13 +113,9 @@ while (1==1)
 		{
 		ack = SEND(tcpd_server_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_server_adress_send);	
 		}
-		
-	while ( ack < 0)
-	{
-		printf("Client: Failed -- Data transfer failed for packet_count  %d\n", packet_count);
-		ack = SEND(tcpd_server_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_server_adress_send);	
-	}
-	
+
+	packet_count += 1;	
+	usleep(1000);
 }
 
 }

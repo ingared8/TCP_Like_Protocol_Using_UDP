@@ -193,8 +193,19 @@ int SENDD(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in addre
 		{
 			d = RECV(client_socket, (char *)ackbuffer, sizeof(ack_buffer) ,address_recv ,zz);
 		}
-			
+		free(ackbuffer);
 		return d;
+	}
+
+int SEND2D(int tcpd_troll_socket_send, char * msg, int sizeofmsg , struct sockaddr_in tcpd_troll_adress_send, struct sockaddr_in tcpd_tcpds_adress_recv)
+	{
+	
+	int ack = SEND(tcpd_troll_socket_send, msg, sizeofmsg, tcpd_troll_adress_send);
+	ack2_buffer * ack2buffer = malloc(sizeof(ack2_buffer));
+	int tcpd_tcpds_adress_recv_len = sizeof(tcpd_troll_adress_send);	
+	int mm1 = RECV(tcpd_troll_socket_send,(char *)ack2buffer, sizeof(ack2_buffer),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
+	printf("TCPD Client: Received acknoweledgement of seq no %d ",ack2buffer->seq_no);
+	return mm1;
 	}
 
 int RECV(int socket, char * buffer, int buf_len ,struct sockaddr_in address, int server_name_len)

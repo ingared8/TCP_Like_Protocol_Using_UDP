@@ -135,15 +135,19 @@ while (1==1)
 	
 	if (usd > 0)
 		{
-		ack = SEND(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);	
+		mm = SEND2D(tcpd_troll_socket_send,(char *)&tr_msg,sizeof(troll_message), tcpd_troll_adress_send, tcpd_tcpds_adress_recv);
+		printf("TCPD Client:  Sent packet and received ack for %d \n",packet_count); 
+		//ack = SEND2D(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);
+		//mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
 		}
 		
-	while ( ack < 0)
-	{
-		printf("Client: Failed -- Data transfer failed for packet_count  %d\n", packet_count);
-		ack = SEND(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);
-	}
+	//while ( ack < 0)
+	//{
+	//	printf("Client: Failed -- Data transfer failed for packet_count  %d\n", packet_count);
+	//	ack = SEND(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);
+	//}
 	
+	usleep(1000);
 }
 
 }
