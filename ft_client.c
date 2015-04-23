@@ -95,17 +95,18 @@ main(int argc, char * argv[] )
 	int len;
 	int ack_tcpd;
 	int ack_file_size;
-	
+	packet_count++;
 	// Send the packets in a loop
+	
 	
 	while ( remaining/buffer_size >= 1 )
 	{
-		printf("Client: a, %d, %d \n", remaining, remaining/buffer_size);
-		printf("Client :Packet_count %d \n",packet_count);
+		printf("Client: Remaining file size  is %d,  packet count is %d \n", remaining, packet_count);
 		
 		len = fread(sendbuffer,sizeof(char),buffer_size,fp);
 		now = time(0);
 		strftime (buff, 100, "%Y-%m-%d %H:%M:%S.000", localtime (&now));
+		
 		printf("Client: %d \n",remaining- buffer_size);
 	
 		if ( len < 0)
@@ -113,14 +114,14 @@ main(int argc, char * argv[] )
 		printf("Client: Failed to read for buf_count %d\n", packet_count);
 		}
 		
-		ack = SENDD(client_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_client_adress_send, tcpd_client_adress_recv);
-		
+		ack = SENDD(client_socket_send, client_socket_listen,(char *)sendbuffer, sizeof(send_buffer), tcpd_client_adress_send, tcpd_client_adress_recv);
+
+		printf("Client :TCPD Message sent and ack message received for packet_count %d:\n",packet_count);
+
 		remaining -= buffer_size;
 		packet_count++;			
-		
-		printf("Client :TCPD ack message received is packet_count %d:\n",packet_count);
-		
-		usleep(1000);
+			
+		//usleep(1000);
 	}
 
 	// Sending the last message 
@@ -133,7 +134,7 @@ main(int argc, char * argv[] )
 	printf(" Client: Failed to read for buf_count %d\n", packet_count);
 	}
 	
-	ack = SENDD(client_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_client_adress_send, tcpd_client_adress_recv);
+	ack = SENDD(client_socket_send, client_socket_listen, (char *)sendbuffer, sizeof(send_buffer), tcpd_client_adress_send, tcpd_client_adress_recv);
 	
 	printf("Client: Last Packet sent \n");
 	printf("Client :TCPD ack message received is buf_count %d:\n",packet_count);

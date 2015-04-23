@@ -26,16 +26,16 @@ printf("TCPD Client: The TCPD Client started \n");
 
 // Socket Creations
 int tcpd_server_socket_send = SOCKET();
-check_socket(tcpd_server_socket_send,"TCPD - Client Sending socket ","TCPD Client");
+check_socket(tcpd_server_socket_send,"TCPD - Client Sending socket ","TCPD server");
 
 int tcpd_server_socket_listen = SOCKET();
-check_socket(tcpd_server_socket_listen,"TCPD Client Receiving socket ","TCPD Client");
+check_socket(tcpd_server_socket_listen,"TCPD Client Receiving socket ","TCPD server");
 
 int tcpd_troll_socket_send = SOCKET();
-check_socket(tcpd_troll_socket_send,"TCPD - Troll Sending socket ","TCPD Client");
+check_socket(tcpd_troll_socket_send,"TCPD - Troll Sending socket ","TCPD server");
 
 int tcpd_tcpdc_socket_listen = SOCKET();
-check_socket(tcpd_tcpdc_socket_listen,"TCPD -TCPDS Receiving socket ","TCPD Client");
+check_socket(tcpd_tcpdc_socket_listen,"TCPD -TCPDS Receiving socket ","TCPD server");
 
 // Get the adress of the TCPD_server which is running on the same machine as ftps.c //
 struct sockaddr_in tcpd_server_adress_send = get_sockaddr_send("localhost", PORT_NUM_OUT_SERVER);
@@ -83,6 +83,7 @@ printf(" The first message, server_ip %s \n", first_msg->server_ip);
 //tr_msg2.header = get_sockaddr_send_troll(PORT_NUM_OUT_TCPDC);
 tr_msg2 = tr_msg;
 tr_msg2.header.sin_port = htons(PORT_NUM_OUT_TCPDC);
+ack2buffer->header = tr_msg2.header;
 
 // Create the header file to add to messages to troll
 mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg2, sizeof(troll_message),tcpd_troll_adress_send); 
@@ -95,7 +96,7 @@ int seq = 0;
 while (1==1)
 {
 	mm =  RECV(tcpd_tcpdc_socket_listen, (char *)&tr_msg, sizeof(troll_message),tcpd_troll_adress_recv, tcpd_troll_adress_recv_len);
-	printf("TCPD Server :packet_count %d \n",packet_count);
+	printf("TCPD Server : Received packet from Client with packet_count  as %d \n",packet_count);
 
 	int rem = cb_push_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
 	
@@ -103,11 +104,13 @@ while (1==1)
 	if (rem > 0)
 		{
 			ack2buffer->seq_no = packet_count; 
-			ack = SEND(tcpd_server_socket_send, (char*)ack2buffer, sizeof(ack2_buffer),tcpd_server_adress_send);
+			ack = SEND(tcpd_troll_socket_send, (char*)ack2buffer, sizeof(ack2_buffer),tcpd_troll_adress_send);
+			printf(" TCPD Server: Ack sent for packet %d \n",packet_count);
 		}
 		
 	// Prepare data from buffer for troll to client
 	int usd = cb_pop_data(cb, (char *)sendbuffer, sizeof(send_buffer));
+	printf("The results is %d \n", usd);
 	
 	if (usd > 0)
 		{
@@ -115,7 +118,7 @@ while (1==1)
 		}
 
 	packet_count += 1;	
-	usleep(1000);
+	//usleep(1000);
 }
 
 }

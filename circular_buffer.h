@@ -10,7 +10,7 @@
 #include <time.h>
 #include <netdb.h>
 #define RING_BUFFER_SIZE 64000
-#define MAX_BF 64000
+#define MAX_BF 64000000
 #define MSS1 1000
 
 typedef struct
@@ -53,7 +53,7 @@ int cb_push_data(circular_buffer *cb, char *item, int size)
     if((cb->available) < size)  
         {
 			printf(" The data could not be added \n");
-			return (size - cb->available);
+			return (cb->available - size  );
 		}
 	else
 	{	
@@ -82,7 +82,7 @@ int cb_pop_data(circular_buffer *cb, char *item, int size)
     if((cb->used) < size)  
         {
 			printf("CB: The data could not be read , there is no enough data\n");
-			return (size - cb->used);
+			return (cb->used - size);
 		}
 	else
 	{	

@@ -14,10 +14,14 @@
 #define MSS 1000 				
 #define header_size 16
 
+typedef unsigned short  crc;
+
 typedef struct troll_message 
 	{
 		struct sockaddr_in header;
-		char body[MSS-header_size];
+		char body[MSS-header_size-100];
+		int seq_no;
+		crc checksum;
 	} troll_message;
 	
 typedef struct 
@@ -27,15 +31,32 @@ typedef struct
 
 typedef struct
 {
+	struct sockaddr_in header;
 	int seq_no;
 	int time_stamp;
-	int others;
 }	ack2_buffer;
 
 typedef struct
-{
-	char data[MSS];
+{	
+	char data[MSS];	
 }	send_buffer;
+
+
+typedef struct
+{
+	struct sockaddr_in header;
+	int packet_number;
+	char data[1000];
+	crc checksum;
+} data_packet;
+
+typedef struct
+{
+	int packet_number;
+	float time_value;
+	int port;
+	int type;
+} timer_packet;
 
 typedef struct
 	{
@@ -176,7 +197,7 @@ int SEND(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in addres
 	return d;
 	}
 	
-int SENDD(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in address, struct sockaddr_in address_recv)
+int SENDD(int client_socket,int client_socket_listen, char * msg, int sizeofmsg, struct sockaddr_in address, struct sockaddr_in address_recv)
 	{
 		
 		int d = SEND(client_socket,(char *)msg, sizeofmsg, address);
@@ -187,25 +208,37 @@ int SENDD(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in addre
 		
 		int zz = sizeof(address_recv);
 		ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
-		d = RECV(client_socket, (char *)ackbuffer, sizeof(ack_buffer),address_recv ,zz);
+		d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer),address_recv ,zz);
 
 		while ( d < 0)
 		{
-			d = RECV(client_socket, (char *)ackbuffer, sizeof(ack_buffer) ,address_recv ,zz);
+			d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer) ,address_recv ,zz);
 		}
 		free(ackbuffer);
 		return d;
 	}
 
-int SEND2D(int tcpd_troll_socket_send, char * msg, int sizeofmsg , struct sockaddr_in tcpd_troll_adress_send, struct sockaddr_in tcpd_tcpds_adress_recv)
+int SEND2D(int client_socket,int client_socket_listen, char * msg, int sizeofmsg, struct sockaddr_in address, struct sockaddr_in address_recv)
 	{
-	
-	int ack = SEND(tcpd_troll_socket_send, msg, sizeofmsg, tcpd_troll_adress_send);
-	ack2_buffer * ack2buffer = malloc(sizeof(ack2_buffer));
-	int tcpd_tcpds_adress_recv_len = sizeof(tcpd_troll_adress_send);	
-	int mm1 = RECV(tcpd_troll_socket_send,(char *)ack2buffer, sizeof(ack2_buffer),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
-	printf("TCPD Client: Received acknoweledgement of seq no %d ",ack2buffer->seq_no);
-	return mm1;
+		
+		int d = SEND(client_socket,(char *)msg, sizeofmsg, address);
+		
+		while ( d < 0)
+		{
+			d = SEND(client_socket,(char *)msg, sizeofmsg, address);
+		}
+		
+		int zz = sizeof(address_recv);
+		ack2_buffer * ackbuffer = malloc(sizeof(ack2_buffer));
+		
+		d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack2_buffer),address_recv ,zz);
+		printf("Received acknowledgement for packet %d\n", ackbuffer->seq_no);
+		while ( d < 0)
+		{
+			d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack2_buffer) ,address_recv ,zz);
+		}
+		free(ackbuffer);
+		return d;
 	}
 
 int RECV(int socket, char * buffer, int buf_len ,struct sockaddr_in address, int server_name_len)

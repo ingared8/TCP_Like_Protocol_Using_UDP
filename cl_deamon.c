@@ -121,7 +121,7 @@ while (1==1)
 	printf("TCPD Client :packet_count %d \n",packet_count);
 
 	int rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
-	rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
+	//rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
 	
 	// Send ack for ftpc/client with remaining size
 	if (rem > 0)
@@ -135,10 +135,14 @@ while (1==1)
 	
 	if (usd > 0)
 		{
-		mm = SEND2D(tcpd_troll_socket_send,(char *)&tr_msg,sizeof(troll_message), tcpd_troll_adress_send, tcpd_tcpds_adress_recv);
+		mm = SEND2D(tcpd_troll_socket_send,tcpd_tcpds_socket_listen,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send, tcpd_tcpds_adress_recv);
 		printf("TCPD Client:  Sent packet and received ack for %d \n",packet_count); 
 		//ack = SEND2D(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);
 		//mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
+		//mm = SEND(tcpd_troll_socket_send, (char *)&tr_msg,sizeof(troll_message),tcpd_troll_adress_send);
+		//printf(" Message sent to the TCPD Server \n");
+		//mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
+		//printf("TCPD Client:  Sent packet and received ack for %d \n",packet_count); 
 		}
 		
 	//while ( ack < 0)
@@ -147,7 +151,7 @@ while (1==1)
 	//	ack = SEND(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);
 	//}
 	
-	usleep(1000);
+	//usleep(1000);
 }
 
 }
