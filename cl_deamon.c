@@ -85,8 +85,13 @@ troll_message tr_msg;  	// Send to TCPDS
 troll_message tr_msg2; 	// Recv from TCPDS
 
 // Timer messages which will get updated
-Timer_message timer_msg_recv;
-Timer_message timer_msg_send;
+Timer_message timer_msg_recv;		// Message received by client for retransmission
+Timer_message timer_msg_send;		// Informing about the packet sent to server
+Timer_message timer_msg_ack;		// Informing acknowledgement of a packet number to timer
+
+// RTT and RTO values
+int rto = 20;
+int rrtvar = 5;
 
 // Setting Default values for the two timer messages
 timer_msg_send.port = 1234;
@@ -188,7 +193,14 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 	if  FD_ISSET(tcpd_tcpds_socket_listen, &readset)
 	{
 		mm = RECV(tcpd_tcpds_socket_listen, (char *)ack2buffer, sizeof(ack2_buffer) ,tcpd_tcpds_adress_recv , tcpd_tcpds_adress_recv_len);
-		printf("TCPD Client: Received ack for %d \n",ack2buffer->seq_no); 
+		printf("TCPD Client: Received ack for %d \n",ack2buffer->seq_no);
+		// Update RTT and RTO
+		
+		// Send message to timer about acknowlegdement of a packet number
+		timer_msg_ack.seq = (long)ack2buffer->seq_no; 
+		timer_msg_ack.time = rto;
+		timer_msg_ack.type = 'c';
+		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_ack, sizeof(Timer_message), tcpd_timer_adress_send); 
 		ack_no++;		
 	}
 	
@@ -197,20 +209,26 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 	{
 		mm =  RECV(tcpd_timer_socket_listen, (char *)&timer_msg_recv, sizeof(Timer_message) ,tcpd_timer_adress_recv , tcpd_timer_adress_recv_len);
 		printf("TCPD Client: Received message for Retransmission for sequence no -- %lu \n",timer_msg_recv.seq); 
-		// Update RTT and RTTVAR
+		
 	}
 	
 	int usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));	
 	if (usd > 0)
 		{
+		
+		tr_msg.seq_no = packet_count;
 		mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send);
 		printf("TCPD Client: Sent packet for  %d \n",packet_count); 
 		
 		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_send, sizeof(Timer_message), tcpd_timer_adress_send);
+		
 		timer_msg_send.seq = (long)packet_count;
+		timer_msg_ack.time = rto;
+		timer_msg_ack.type = 'c';
+
 		printf("TCPD Client: Sent timer message for  %lu \n",timer_msg_send.seq); 
 		packet_count++;
 		}
-	sleep(1);	
+	usleep(1000);	
 	}
 }

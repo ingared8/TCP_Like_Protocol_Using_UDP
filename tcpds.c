@@ -132,7 +132,7 @@ while(1==1)
 	// Send ack for ftpc/client with remaining size
 	if (rem > 0)
 		{
-			ack2buffer->seq_no = packet_count; 
+			ack2buffer->seq_no = tr_msg.seq_no; 
 			ack = SEND(tcpd_troll_socket_send, (char*)ack2buffer, sizeof(ack2_buffer),tcpd_troll_adress_send);
 			printf(" TCPD Server: Ack sent for packet %d \n",packet_count);
 		}
