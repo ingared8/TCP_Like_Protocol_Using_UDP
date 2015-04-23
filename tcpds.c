@@ -93,8 +93,37 @@ int ack;
 int rem;
 int usd;
 int seq = 0;
-while (1==1)
+
+// Params for Select
+fd_set readset;
+struct timeval tv;
+int retval;
+int max_sd;
+
+while(1==1)
 {
+	// Select the maximum of the existing clients 
+	max_sd = max2(tcpd_server_socket_listen, tcpd_tcpdc_socket_listen) + 1;
+
+	// Watch stdin (fd 0) to see when it has input.
+	FD_ZERO(&readset);  
+	FD_SET(tcpd_server_socket_listen, &readset);
+	FD_SET(tcpd_tcpdc_socket_listen, &readset);
+
+	// Wait up to five seconds. 
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+	retval = select(max_sd, &readset, NULL, NULL, &tv);
+
+	// Check for error
+    if (retval == -1)
+		{
+			perror("select()");
+		}
+	
+	else 
+	{
+		
 	mm =  RECV(tcpd_tcpdc_socket_listen, (char *)&tr_msg, sizeof(troll_message),tcpd_troll_adress_recv, tcpd_troll_adress_recv_len);
 	printf("TCPD Server : Received packet from Client with packet_count  as %d \n",packet_count);
 
@@ -119,6 +148,8 @@ while (1==1)
 
 	packet_count += 1;	
 	//usleep(1000);
+	
+	}
 }
 
 }

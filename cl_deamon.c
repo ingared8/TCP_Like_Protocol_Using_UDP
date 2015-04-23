@@ -78,11 +78,26 @@ ring_buffer_init(cb, RING_BUFFER_SIZE);
 
 // Start listening for packets 
 ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
+ack2_buffer * ack2buffer = malloc(sizeof(ack2_buffer));
 send_buffer * recvbuffer = malloc(sizeof(send_buffer));
 first_message * first_msg = malloc(sizeof(first_message));
 troll_message tr_msg;  	// Send to TCPDS
 troll_message tr_msg2; 	// Recv from TCPDS
-	
+
+// Timer messages which will get updated
+Timer_message timer_msg_recv;
+Timer_message timer_msg_send;
+
+// Setting Default values for the two timer messages
+timer_msg_send.port = 1234;
+timer_msg_send.type = 's';
+timer_msg_send.seq = 20;
+timer_msg_send.time = 20;
+
+timer_msg_recv.port = 1234;
+timer_msg_recv.type = 'c';
+timer_msg_recv.seq = 20;
+
 // Receive First packet for connect establishment
 printf("TCPD Client: Read the first message\n");
 int mm =  RECV(tcpd_client_socket_listen, (char *)first_msg, sizeof(first_message),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
@@ -115,43 +130,87 @@ printf(" The first message, server_ip %s \n", first_msg->server_ip);
 int ack;
 int rem;
 int usd;
-while (1==1)
-{
-	mm =  RECV(tcpd_client_socket_listen, (char *)recvbuffer, sizeof(send_buffer),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
-	printf("TCPD Client :packet_count %d \n",packet_count);
+packet_count = 1;
+int ack_no = 1;
 
-	int rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
-	//rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
-	
-	// Send ack for ftpc/client with remaining size
-	if (rem > 0)
+// Params for using select	
+fd_set rfds;
+fd_set readset;
+struct timeval tv;
+int retval;
+int max_sd;
+
+while(1==1)
+{
+
+// Select the maximum of the existing clients 
+max_sd = max_fun(tcpd_client_socket_listen, tcpd_timer_socket_listen, tcpd_tcpds_socket_listen) + 1;
+
+// Watch stdin (fd 0) to see when it has input.
+FD_ZERO(&readset);  
+FD_SET(tcpd_client_socket_listen, &readset);
+FD_SET(tcpd_tcpds_socket_listen, &readset);
+FD_SET(tcpd_timer_socket_listen, &readset);
+
+// Wait up to five seconds. 
+tv.tv_sec = 5;
+tv.tv_usec = 0;
+retval = select(max_sd, &readset, NULL, NULL, &tv);
+
+// Don’t rely on the value of tv now! */
+
+	// Check for error
+    if (retval == -1)
 		{
-			ackbuffer->free_size = rem; 
-			ack = SEND(tcpd_client_socket_send, (char*)ackbuffer, sizeof(ack_buffer),tcpd_client_adress_send);
+			perror("select()");
 		}
+        
+	// Check for messages from Client and write the data to the wrap around buffer
+    if FD_ISSET(tcpd_client_socket_listen, &readset)
+    {
+
+		mm =  RECV(tcpd_client_socket_listen, (char *)recvbuffer, sizeof(send_buffer),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
+		printf("TCPD Client :From Client received packet no %d \n",packet_count);
+
+		int rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
 		
-	// Prepare data from buffer for troll 
-	int usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
+		// Send ack for ftpc/client with remaining size
+		if (rem > 0)
+			{
+				ackbuffer->free_size = rem; 
+				ack = SEND(tcpd_client_socket_send, (char*)ackbuffer, sizeof(ack_buffer),tcpd_client_adress_send);
+			}
+	}
 	
+	//mm = SEND2D(tcpd_troll_socket_send,tcpd_tcpds_socket_listen,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send, tcpd_tcpds_adress_recv);
+
+	// Prepare data from buffer for troll 
+	if  FD_ISSET(tcpd_tcpds_socket_listen, &readset)
+	{
+		mm = RECV(tcpd_tcpds_socket_listen, (char *)ack2buffer, sizeof(ack2_buffer) ,tcpd_tcpds_adress_recv , tcpd_tcpds_adress_recv_len);
+		printf("TCPD Client: Received ack for %d \n",ack2buffer->seq_no); 
+		ack_no++;		
+	}
+	
+	// Messages from Timer tcpd_timer_socket_listen
+	if FD_ISSET(tcpd_timer_socket_listen, &readset)
+	{
+		mm =  RECV(tcpd_timer_socket_listen, (char *)&timer_msg_recv, sizeof(Timer_message) ,tcpd_timer_adress_recv , tcpd_timer_adress_recv_len);
+		printf("TCPD Client: Received message for Retransmission for sequence no -- %lu \n",timer_msg_recv.seq); 
+		// Update RTT and RTTVAR
+	}
+	
+	int usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));	
 	if (usd > 0)
 		{
-		mm = SEND2D(tcpd_troll_socket_send,tcpd_tcpds_socket_listen,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send, tcpd_tcpds_adress_recv);
-		printf("TCPD Client:  Sent packet and received ack for %d \n",packet_count); 
-		//ack = SEND2D(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);
-		//mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
-		//mm = SEND(tcpd_troll_socket_send, (char *)&tr_msg,sizeof(troll_message),tcpd_troll_adress_send);
-		//printf(" Message sent to the TCPD Server \n");
-		//mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
-		//printf("TCPD Client:  Sent packet and received ack for %d \n",packet_count); 
-		}
+		mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send);
+		printf("TCPD Client: Sent packet for  %d \n",packet_count); 
 		
-	//while ( ack < 0)
-	//{
-	//	printf("Client: Failed -- Data transfer failed for packet_count  %d\n", packet_count);
-	//	ack = SEND(tcpd_troll_socket_send,(char *)&tr_msg, sizeof(troll_message), tcpd_troll_adress_send);
-	//}
-	
-	//usleep(1000);
-}
-
+		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_send, sizeof(Timer_message), tcpd_timer_adress_send);
+		timer_msg_send.seq = (long)packet_count;
+		printf("TCPD Client: Sent timer message for  %lu \n",timer_msg_send.seq); 
+		packet_count++;
+		}
+	sleep(1);	
+	}
 }

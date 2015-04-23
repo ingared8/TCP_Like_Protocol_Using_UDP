@@ -139,6 +139,9 @@ main(int argc, char * argv[] )
 	printf("Client: Last Packet sent \n");
 	printf("Client :TCPD ack message received is buf_count %d:\n",packet_count);
 	
+	// Close the sockets
+	close(client_socket_listen);
+	close(client_socket_send);
+	
 	// End of ftp
-
 }

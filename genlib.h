@@ -19,7 +19,7 @@ typedef unsigned short  crc;
 typedef struct troll_message 
 	{
 		struct sockaddr_in header;
-		char body[MSS-header_size-100];
+		char body[MSS-header_size];
 		int seq_no;
 		crc checksum;
 	} troll_message;
@@ -50,13 +50,15 @@ typedef struct
 	crc checksum;
 } data_packet;
 
-typedef struct
-{
-	int packet_number;
-	float time_value;
-	int port;
-	int type;
-} timer_packet;
+typedef struct {
+		
+		int time;
+		int port;
+		long seq;
+		char type;
+	
+} Timer_message;
+
 
 typedef struct
 	{
@@ -199,22 +201,27 @@ int SEND(int client_socket, char * msg, int sizeofmsg, struct sockaddr_in addres
 	
 int SENDD(int client_socket,int client_socket_listen, char * msg, int sizeofmsg, struct sockaddr_in address, struct sockaddr_in address_recv)
 	{
-		
-		int d = SEND(client_socket,(char *)msg, sizeofmsg, address);
-		while ( d < 0)
-		{
-			d = SEND(client_socket,(char *)msg, sizeofmsg, address);
-		}
-		
-		int zz = sizeof(address_recv);
-		ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
-		d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer),address_recv ,zz);
-
-		while ( d < 0)
-		{
-			d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer) ,address_recv ,zz);
-		}
-		free(ackbuffer);
+		int ack = -1;
+		int d = -1;
+		while (ack < 0)
+			{			
+				d = SEND(client_socket,(char *)msg, sizeofmsg, address);
+				while ( d < 0)
+				{
+					d = SEND(client_socket,(char *)msg, sizeofmsg, address);
+				}
+				
+				int zz = sizeof(address_recv);
+				ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
+				d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer),address_recv ,zz);
+				ack = ackbuffer->free_size;
+				
+				if ( d < 0)
+				{
+					d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer) ,address_recv ,zz);
+				}
+				free(ackbuffer);
+			}
 		return d;
 	}
 
@@ -240,6 +247,20 @@ int SEND2D(int client_socket,int client_socket_listen, char * msg, int sizeofmsg
 		free(ackbuffer);
 		return d;
 	}
+	
+int max2(int a, int b)
+{
+	if ( a > b)
+		{ return a; }
+	else
+		{ return b; }
+}
+	
+int max_fun(int a, int b , int c )
+{
+	int m1 = max2(a,b);
+	return max2(m1,c);
+}
 
 int RECV(int socket, char * buffer, int buf_len ,struct sockaddr_in address, int server_name_len)
 	{
@@ -251,7 +272,4 @@ int CLOSE()
 	{
 	printf(" Passing Close function -- (which is a null function) \n");
 	return 1;	
-	}	
-
-
-
+	}
