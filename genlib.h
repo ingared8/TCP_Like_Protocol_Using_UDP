@@ -19,9 +19,10 @@ typedef unsigned short  crc;
 typedef struct troll_message 
 	{
 		struct sockaddr_in header;
-		char body[MSS-header_size];
+		char body[MSS-100];
 		int seq_no;
 		crc checksum;
+		struct timeval time;
 	} troll_message;
 	
 typedef struct 
@@ -33,7 +34,7 @@ typedef struct
 {
 	struct sockaddr_in header;
 	int seq_no;
-	int time_stamp;
+	struct timeval time;
 }	ack2_buffer;
 
 typedef struct

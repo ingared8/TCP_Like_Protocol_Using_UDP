@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include "genlib.h"
 #include "circular_buffer.h"
+#include "Jacobson.c"
 
 // This program is to create a file transfer protocol server
 
@@ -89,10 +90,6 @@ Timer_message timer_msg_recv;		// Message received by client for retransmission
 Timer_message timer_msg_send;		// Informing about the packet sent to server
 Timer_message timer_msg_ack;		// Informing acknowledgement of a packet number to timer
 
-// RTT and RTO values
-int rto = 20;
-int rrtvar = 5;
-
 // Setting Default values for the two timer messages
 timer_msg_send.port = 1234;
 timer_msg_send.type = 's';
@@ -102,6 +99,16 @@ timer_msg_send.time = 20;
 timer_msg_recv.port = 1234;
 timer_msg_recv.type = 'c';
 timer_msg_recv.seq = 20;
+
+// Settings for timestamp values
+struct timeval sent_time;
+struct timeval ack_time;
+
+// RTT and RTPO values
+double rtt;
+int rto;
+// Other variables are maintained in the static scope of Jacobson.c
+
 
 // Receive First packet for connect establishment
 printf("TCPD Client: Read the first message\n");
@@ -194,8 +201,19 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 	{
 		mm = RECV(tcpd_tcpds_socket_listen, (char *)ack2buffer, sizeof(ack2_buffer) ,tcpd_tcpds_adress_recv , tcpd_tcpds_adress_recv_len);
 		printf("TCPD Client: Received ack for %d \n",ack2buffer->seq_no);
-		// Update RTT and RTO
 		
+		gettimeofday(&ack_time,NULL);
+		sent_time = ack2buffer->time;
+		
+		// Update RTT and RTO
+		rtt = calc_rtt(ack_time, sent_time);
+
+		if (ack2buffer->seq_no <= 1)
+			{ initialize_srtt_rttvar(rtt); }
+	
+		rto = computeRTO();
+		rto = max2(rto,10);
+		printf("RTO computed is  %d\n", rto);
 		// Send message to timer about acknowlegdement of a packet number
 		timer_msg_ack.seq = (long)ack2buffer->seq_no; 
 		timer_msg_ack.time = rto;
@@ -217,6 +235,10 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		{
 		
 		tr_msg.seq_no = packet_count;
+		
+		gettimeofday(&sent_time,NULL);
+		tr_msg.time = sent_time;
+		
 		mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send);
 		printf("TCPD Client: Sent packet for  %d \n",packet_count); 
 		
@@ -229,6 +251,6 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		printf("TCPD Client: Sent timer message for  %lu \n",timer_msg_send.seq); 
 		packet_count++;
 		}
-	usleep(1000);	
+	//usleep(100);	
 	}
 }
