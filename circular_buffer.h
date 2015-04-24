@@ -28,6 +28,7 @@ typedef struct
     int available;		// Available size of the buffer
     int head;       	// pointer to head
     int tail;       	// pointer to tail
+    int ack;			// Pointer to ack
 } circular_buffer;
 
 void ring_buffer_init(circular_buffer *cb, int capacity)
@@ -72,7 +73,7 @@ int cb_push_data(circular_buffer *cb, char *item, int size)
 			}
 		cb->available -= size;
 		cb->used += size;
-		printf("CB: Data of size %d units  is pushed , used is %d , free is %d \n", size,cb->used,cb->available);
+		//printf("CB: Data of size %d units  is pushed , used is %d , free is %d \n", size,cb->used,cb->available);
 		return cb->available; 
 	}
 }
@@ -81,7 +82,7 @@ int cb_pop_data(circular_buffer *cb, char *item, int size)
 {
     if((cb->used) < size)  
         {
-			printf("CB: The data could not be read , there is no enough data\n");
+			//printf("CB: The data could not be read , there is no enough data\n");
 			return (cb->used - size);
 		}
 	else
@@ -101,7 +102,7 @@ int cb_pop_data(circular_buffer *cb, char *item, int size)
 			}
 		cb->available += size;
 		cb->used -= size;
-		printf("CB: Data of size %d units popped , used is %d , free is %d \n",size,cb->used,cb->available);
+		//printf("CB: Data of size %d units popped , used is %d , free is %d \n",size,cb->used,cb->available);
 		return cb->used; 
 	}
 }

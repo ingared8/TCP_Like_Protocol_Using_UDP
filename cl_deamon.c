@@ -142,7 +142,8 @@ printf(" The first message, server_ip %s \n", first_msg->server_ip);
 int ack;
 int rem;
 int usd;
-packet_count = 1;
+packet_count = 0;
+int packet_count_client = 0;
 int ack_no = 1;
 
 // Params for using select	
@@ -182,8 +183,8 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
     {
 
 		mm =  RECV(tcpd_client_socket_listen, (char *)recvbuffer, sizeof(send_buffer),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
-		printf("TCPD Client :From Client received packet no %d \n",packet_count);
-
+		printf("TCPD Client :From Client received packet no %d \n",packet_count_client);
+		
 		int rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
 		
 		// Send ack for ftpc/client with remaining size
@@ -192,6 +193,7 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 				ackbuffer->free_size = rem; 
 				ack = SEND(tcpd_client_socket_send, (char*)ackbuffer, sizeof(ack_buffer),tcpd_client_adress_send);
 			}
+		packet_count_client++;
 	}
 	
 	//mm = SEND2D(tcpd_troll_socket_send,tcpd_tcpds_socket_listen,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send, tcpd_tcpds_adress_recv);
@@ -208,7 +210,7 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		// Update RTT and RTO
 		rtt = calc_rtt(ack_time, sent_time);
 
-		if (ack2buffer->seq_no <= 1)
+		if (ack2buffer->seq_no < 1)
 			{ initialize_srtt_rttvar(rtt); }
 	
 		rto = computeRTO();
@@ -216,7 +218,6 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		printf("RTO computed is  %d\n", rto);
 		// Send message to timer about acknowlegdement of a packet number
 		timer_msg_ack.seq = (long)ack2buffer->seq_no; 
-		timer_msg_ack.time = rto;
 		timer_msg_ack.type = 'c';
 		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_ack, sizeof(Timer_message), tcpd_timer_adress_send); 
 		ack_no++;		
@@ -230,27 +231,27 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		
 	}
 	
-	int usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));	
-	if (usd > 0)
+	int usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
+	printf( " value of usd is 	%d\n",usd);
+	if (usd >= 0)
 		{
 		
 		tr_msg.seq_no = packet_count;
-		
 		gettimeofday(&sent_time,NULL);
 		tr_msg.time = sent_time;
 		
 		mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send);
 		printf("TCPD Client: Sent packet for  %d \n",packet_count); 
 		
-		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_send, sizeof(Timer_message), tcpd_timer_adress_send);
-		
 		timer_msg_send.seq = (long)packet_count;
 		timer_msg_ack.time = rto;
-		timer_msg_ack.type = 'c';
-
+		timer_msg_ack.type = 's';
+		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_send, sizeof(Timer_message), tcpd_timer_adress_send);
+				
 		printf("TCPD Client: Sent timer message for  %lu \n",timer_msg_send.seq); 
 		packet_count++;
 		}
-	//usleep(100);	
+	printf("-------->>>>>>TCPD CLient<<<<<<<<<<----------\n");
+	usleep(100);	
 	}
 }

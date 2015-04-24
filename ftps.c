@@ -11,6 +11,12 @@
 
 main(int argc, char * argv[] )
 {	
+	
+	float x= 345.678;
+	int y;
+	y = (int)x;
+	printf(" Float is %.1f \t and ineteger is %d \n",x,y); 
+
 	int PORT_NUM_RECV = 7777;
 	int PORT_NUM_SEND = 7700;
 
@@ -48,6 +54,7 @@ main(int argc, char * argv[] )
 	int packet_count = 0;
 	troll_message tr_msg;
 	first_message * first_msg = malloc(sizeof(first_message));
+	ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
 	char * recvbuffer = malloc(sizeof(send_buffer));
 	int buffer_size = sizeof(send_buffer);
 	
@@ -64,17 +71,31 @@ main(int argc, char * argv[] )
 	FILE * fp;
 	char * newfilename = "newfile.txt"; 
 	fp = fopen(	newfilename,"wb");
+	buffer_size = sizeof(send_buffer);
 
 	while (file_remaining/buffer_size >= 1)
 	{
 		
+		// Recv files 
 		mm = RECV(server_socket_listen, recvbuffer, buffer_size, tcpd_server_adress_recv, tcpd_server_adress_recv_len);
 		while ( mm < 0)
 		{
 		mm = RECV(server_socket_listen, recvbuffer,  buffer_size, tcpd_server_adress_recv, tcpd_server_adress_recv_len);
 		printf("Server: Message receive failed for buf count : %d \n", packet_count);
 		}
-		printf("Server: Message RECV to server succeeded -- %d\n", packet_count);
+		printf("Server: Message Recievd from TCPD Server with packet count as -- %d\n", packet_count);
+		
+		// Send acknowledgement for the next packet with file size
+		ackbuffer->free_size = min2(buffer_size, file_remaining);
+		
+		mm = SEND(server_socket_send,(char *)ackbuffer, sizeof(ack_buffer), tcpd_server_adress_send);
+		while (mm < 0)
+		{
+			printf("Server: Acknowledgement for the tcpd (bytes received is failed \n");
+			mm = SEND(server_socket_send,(char *)ackbuffer, sizeof(ack_buffer), tcpd_server_adress_send);
+		}
+		printf("Server: Requesting data from tcpd server of buffer size %d bytes \n", buffer_size);
+		
 		
 		mm = fwrite(recvbuffer, sizeof(char), buffer_size,fp);
 		if ( mm < 0)
@@ -82,15 +103,18 @@ main(int argc, char * argv[] )
 		printf("Server: Write to the file failed\n");
 		mm = fwrite(recvbuffer, sizeof(char), buffer_size,fp);
 		} 
-		printf("Server: Message Write to file succeeded -- %d\n", packet_count);
-
+		//printf("Server: Message Write to file succeeded -- %d\n", packet_count);
+		
 		packet_count++;
-		printf("Server: data Message has arrived for buf_count, %d\n",packet_count);
 		file_remaining -= buffer_size; 
-			
+		printf("Server: Remaining file_size is, %d\n",file_remaining);
 	}
 
 	int buffer_size1 = file_remaining;
+	
+	ackbuffer->free_size = buffer_size1;
+	mm = SEND(server_socket_send,(char *)ackbuffer, sizeof(ack_buffer), tcpd_server_adress_send);
+	
 	mm = RECV(server_socket_listen, recvbuffer, buffer_size1, tcpd_server_adress_recv, tcpd_server_adress_recv_len);
 	while (mm < 0)
 	{
@@ -103,7 +127,6 @@ main(int argc, char * argv[] )
 	{
 	printf("Server: Write to the file failed in the Last message\n");
 	} 
-
 	packet_count++;
 	file_remaining -= buffer_size1;  
 	
@@ -111,12 +134,15 @@ main(int argc, char * argv[] )
 	{
 	printf(" Server: File transfer complete\n");
 	}
-
+	
 	int df = fclose(fp);
+	
+	// Close the sockets
+	close(server_socket_listen);
+	close(server_socket_send);
 	
 	free(recvbuffer);
 	free(first_msg);
 	printf("Completed . Good bye\n");
-	
 }
 

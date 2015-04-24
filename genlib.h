@@ -19,7 +19,7 @@ typedef unsigned short  crc;
 typedef struct troll_message 
 	{
 		struct sockaddr_in header;
-		char body[MSS-100];
+		char body[MSS];
 		int seq_no;
 		crc checksum;
 		struct timeval time;
@@ -39,7 +39,8 @@ typedef struct
 
 typedef struct
 {	
-	char data[MSS];	
+	char data[MSS];
+		
 }	send_buffer;
 
 
@@ -215,12 +216,12 @@ int SENDD(int client_socket,int client_socket_listen, char * msg, int sizeofmsg,
 				int zz = sizeof(address_recv);
 				ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
 				d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer),address_recv ,zz);
-				ack = ackbuffer->free_size;
 				
 				if ( d < 0)
 				{
 					d = RECV(client_socket_listen, (char *)ackbuffer, sizeof(ack_buffer) ,address_recv ,zz);
 				}
+				ack = ackbuffer->free_size;
 				free(ackbuffer);
 			}
 		return d;
@@ -255,6 +256,14 @@ int max2(int a, int b)
 		{ return a; }
 	else
 		{ return b; }
+}
+
+int min2(int a, int b)
+{
+	if (a > b)
+		{ return b;}
+	else
+		{ return a;}
 }
 	
 int max_fun(int a, int b , int c )

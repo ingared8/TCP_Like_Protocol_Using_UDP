@@ -106,8 +106,8 @@ while( 1==1)
 		check_and_update_head_value(B, timer_client_send_socket, timer_client_adress_send);
 		printf("time : %d\n",++time1);
 		//printf(" Head value --> %d\n",B->head->seq);
-		print_linked_list(B);
-		usleep(1000); // sleep for 1 millisecond
+		//print_linked_list(B);
+		//usleep(1000); // sleep for 1 millisecond
 	}
 	
 	close(timer_client_recv_socket);

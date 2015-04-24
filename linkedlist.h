@@ -157,7 +157,8 @@ void delete_node(linked_list * A)
 	{
 		A->head = NULL;
 		A->tail = NULL;
-		A->len - 0;
+		A->len = 0;
+		return;
 	}
 	node * a = A->head;
 	A->head = a->next;
