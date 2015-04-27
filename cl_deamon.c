@@ -195,7 +195,6 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		printf("TCPD Client :From Client received packet no %d \n",packet_count_client);
 		
 		rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
-		printf("---TCPDC BUFFER: %s\n",recvbuffer->data);
 		if (rem >= 0)
 		{
 			packet_count_client++;
@@ -274,9 +273,6 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		
 		mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send);
 		printf("TCPD Client: Sent packet for  %d \n",packet_count); 
-		printf("TCPD: %s \n", recvbuffer->data);
-		printf("TCPD: %d \n", tr_msg.seq_no);
-
 		timer_msg_send.seq = (long)packet_count;
 		timer_msg_ack.time = rto;
 		timer_msg_ack.type = 's';

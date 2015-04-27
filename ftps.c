@@ -118,10 +118,13 @@ main(int argc, char * argv[] )
 	}
 	
 	ackbuffer->free_size = buffer_size1;
+	
 	mm = SEND(server_socket_send,(char *)ackbuffer, sizeof(ack_buffer), tcpd_server_adress_send);
+	while ( mm < 0)
+	{
+	mm = SEND(server_socket_send,(char *)ackbuffer, sizeof(ack_buffer), tcpd_server_adress_send);
+	}
 	
-	
-	printf(" Buffer is : %s \n", recvbuffer);
 	mm = fwrite(recvbuffer,sizeof(char),buffer_size1,fp);
 	if ( mm < 0)
 	{

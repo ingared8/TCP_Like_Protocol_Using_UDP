@@ -174,8 +174,6 @@ while(1==1)
 		remaining_file_size -= ackbuffer->free_size;
 		packet_count_server++;
 		printf("TCPD Server: Remaining file size is %d\n",remaining_file_size);
-		printf("TCPD Server: Jaffa and Gagan\n");
-		printf("TCPD: %s \n", sendbuffer);
 	}
 	
 	// Closing function call-- send last packet and close the sockets 
