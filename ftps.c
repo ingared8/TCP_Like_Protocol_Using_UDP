@@ -11,13 +11,8 @@
 
 main(int argc, char * argv[] )
 {	
-	
-	float x= 345.678;
-	int y;
-	y = (int)x;
-	printf(" Float is %.1f \t and ineteger is %d \n",x,y); 
 
-	int PORT_NUM_RECV = 7777;
+	int PORT_NUM_RECV = atoi(argv[1]);
 	int PORT_NUM_SEND = 7700;
 
 	if (argc >= 1)
@@ -57,11 +52,10 @@ main(int argc, char * argv[] )
 	ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
 	char * recvbuffer = malloc(sizeof(send_buffer));
 	int buffer_size = sizeof(send_buffer);
-	
-	
-	// Receive the first message and unblock the Accept call	
+		
+	// Receive the first message and unblock the Accept call ( Connection establishment )
 	int mm = ACCEPT(server_socket_listen, (char *)first_msg, sizeof(first_message),tcpd_server_adress_recv, tcpd_server_adress_recv_len );
-	
+	printf("Server: Connection Establishment successful\n");
 	printf("Server :packet_count %d \n",packet_count);	
 	printf("Server: The first message, file_size is %d \n", first_msg->file_size);
 	printf(" The first message, port no is %d \n", first_msg->server_port);	
@@ -69,8 +63,12 @@ main(int argc, char * argv[] )
 	
 	int file_remaining = first_msg->file_size;
 	FILE * fp;
-	char * newfilename = "newfile.txt"; 
-	fp = fopen(	newfilename,"wb");
+	char  newfilename[30];
+	char  * extra = "new_";
+	memcpy(newfilename,extra,4);
+	memcpy(newfilename+4,first_msg->filename, 20); 
+	fp = fopen(newfilename,"wb");
+	printf("Server: The file is being written to %s \n",newfilename); 
 	buffer_size = sizeof(send_buffer);
 
 	while (file_remaining/buffer_size >= 1)
@@ -112,9 +110,6 @@ main(int argc, char * argv[] )
 
 	int buffer_size1 = file_remaining;
 	
-	ackbuffer->free_size = buffer_size1;
-	mm = SEND(server_socket_send,(char *)ackbuffer, sizeof(ack_buffer), tcpd_server_adress_send);
-	
 	mm = RECV(server_socket_listen, recvbuffer, buffer_size1, tcpd_server_adress_recv, tcpd_server_adress_recv_len);
 	while (mm < 0)
 	{
@@ -122,6 +117,11 @@ main(int argc, char * argv[] )
 	mm = RECV(server_socket_listen, recvbuffer, buffer_size1, tcpd_server_adress_recv, tcpd_server_adress_recv_len);
 	}
 	
+	ackbuffer->free_size = buffer_size1;
+	mm = SEND(server_socket_send,(char *)ackbuffer, sizeof(ack_buffer), tcpd_server_adress_send);
+	
+	
+	printf(" Buffer is : %s \n", recvbuffer);
 	mm = fwrite(recvbuffer,sizeof(char),buffer_size1,fp);
 	if ( mm < 0)
 	{
@@ -135,14 +135,17 @@ main(int argc, char * argv[] )
 	printf(" Server: File transfer complete\n");
 	}
 	
+	// Close the file
 	int df = fclose(fp);
 	
 	// Close the sockets
+	printf("Server: Closing the sockets\n");
 	close(server_socket_listen);
 	close(server_socket_send);
 	
+	//  De allocate the buffers
 	free(recvbuffer);
 	free(first_msg);
-	printf("Completed . Good bye\n");
+	printf("Server: Completed . Good bye\n");
 }
 

@@ -11,6 +11,7 @@
 #include "genlib.h"
 #include "circular_buffer.h"
 #include "Jacobson.c"
+#include "crc.c"
 
 // This program is to create a file transfer protocol server
 
@@ -72,18 +73,55 @@ check_bind(bind_id2, "TCPD Client/ TCPDS server receiving socket", "TCPD client"
 int bind_id3 = BIND(tcpd_timer_socket_listen, tcpd_timer_adress_recv);
 check_bind(bind_id3, "TCPD Client/ Timer receiving socket", "TCPD client");
 
+// Params for messages and formats
+first_message * first_msg = malloc(sizeof(first_message));
+troll_message tr_msg;  	// Send to TCPDS
+troll_message tr_msg2; 	// Recv from TCPDS
+
+while ( 1==1)
+{
+
+// Waiting for message from Client 
+printf("TCPD Client: Waiting for Connection\n");
+	
+// Receive First packet for connect establishment
+int mm =  RECV(tcpd_client_socket_listen, (char *)first_msg, sizeof(first_message),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
+printf("TCPD Client: Establishing Connection with server\n");
+
+// Know the IP adress and port number of server
+printf(" TCPD Client: File_size is %d \n", first_msg->file_size);
+printf(" TCPD Client: port no is %d \n", first_msg->server_port);	
+printf(" TCPD Client: File is to be transferred to server_ip %s \n", first_msg->server_ip);	
+
+// Get the adress of the first message of 
+tr_msg.header = get_sockaddr_send_troll(first_msg->server_ip, PORT_NUM_OUT_TCPDS);
+
+// Create the header file to add to messages to troll
+//memcpy(first_msg,&tr_msg2.body,sizeof(first_message));
+memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
+memcpy(&tr_msg.body,first_msg,sizeof(first_message));
+
+// Send first message to TCPDS via troll
+mm = SEND(tcpd_troll_socket_send, (char *)&tr_msg,sizeof(troll_message),tcpd_troll_adress_send);
+printf(" Message sent to the TCPD Server \n");
+mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
+
+printf("TCPD Client: Establied Connection with server and Starting file transfer\n");
+
 // Create a cyclic buffer and create the read and write pointers
 circular_buffer * cb = malloc(sizeof(circular_buffer));
-ring_buffer_init(cb, RING_BUFFER_SIZE);
+ring_buffer_init(cb);
+const int complete_file_size = first_msg->file_size;
+//memcpy(&complete_file_size,first_msg->file_size, sizeof(int));
 
+// Initialise the CRC
+crcInit();
+printf("TCPD Client: Initializing the circular buffer\n");
 
 // Start listening for packets 
 ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
 ack2_buffer * ack2buffer = malloc(sizeof(ack2_buffer));
 send_buffer * recvbuffer = malloc(sizeof(send_buffer));
-first_message * first_msg = malloc(sizeof(first_message));
-troll_message tr_msg;  	// Send to TCPDS
-troll_message tr_msg2; 	// Recv from TCPDS
 
 // Timer messages which will get updated
 Timer_message timer_msg_recv;		// Message received by client for retransmission
@@ -107,36 +145,6 @@ struct timeval ack_time;
 // RTT and RTPO values
 double rtt;
 int rto;
-// Other variables are maintained in the static scope of Jacobson.c
-
-
-// Receive First packet for connect establishment
-printf("TCPD Client: Read the first message\n");
-int mm =  RECV(tcpd_client_socket_listen, (char *)first_msg, sizeof(first_message),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
-printf("TCPD Client :packet_count %d \n",packet_count);
-printf("TCPD Client: Send the first message\n");
-
-// Know the IP adress and port number of server
-printf(" The first message, file_size is %d \n", first_msg->file_size);
-printf(" The first message, port no is %d \n", first_msg->server_port);	
-printf(" The first message, server_ip %s \n", first_msg->server_ip);	
-
-// Create the header file to add to messages to troll
-tr_msg.header = get_sockaddr_send_troll(first_msg->server_ip, PORT_NUM_OUT_TCPDS);
-memset((void*)tr_msg.body,'\0',sizeof(tr_msg.body));
-memcpy(&tr_msg.body,first_msg,sizeof(first_message));
-
-// Send first message to TCPDS via troll
-mm = SEND(tcpd_troll_socket_send, (char *)&tr_msg,sizeof(troll_message),tcpd_troll_adress_send);
-printf(" Message sent to the TCPD Server \n");
-mm = RECV(tcpd_tcpds_socket_listen,(char *)&tr_msg2, sizeof(troll_message),tcpd_tcpds_adress_recv,tcpd_tcpds_adress_recv_len);
-
-// Redundant
-memcpy(first_msg,&tr_msg2.body,sizeof(first_message));
-printf(" Message received from the TCPD Server \n");
-printf(" The first message, file_size is %d \n", first_msg->file_size);
-printf(" The first message, port no is %d \n", first_msg->server_port);	
-printf(" The first message, server_ip %s \n", first_msg->server_ip);	
 
 // Start listening for files and start writing in the circular buffer
 int ack;
@@ -145,6 +153,7 @@ int usd;
 packet_count = 0;
 int packet_count_client = 0;
 int ack_no = 1;
+int file_size_acknowleged = 0;
 
 // Params for using select	
 fd_set rfds;
@@ -185,15 +194,17 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		mm =  RECV(tcpd_client_socket_listen, (char *)recvbuffer, sizeof(send_buffer),tcpd_client_adress_recv, tcpd_client_adress_recv_len);
 		printf("TCPD Client :From Client received packet no %d \n",packet_count_client);
 		
-		int rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
+		rem = cb_push_data(cb, (char *)recvbuffer, sizeof(send_buffer));
+		printf("---TCPDC BUFFER: %s\n",recvbuffer->data);
+		if (rem >= 0)
+		{
+			packet_count_client++;
+		}
 		
 		// Send ack for ftpc/client with remaining size
-		if (rem > 0)
-			{
-				ackbuffer->free_size = rem; 
-				ack = SEND(tcpd_client_socket_send, (char*)ackbuffer, sizeof(ack_buffer),tcpd_client_adress_send);
-			}
-		packet_count_client++;
+		ackbuffer->free_size = rem; 
+		ack = SEND(tcpd_client_socket_send, (char*)ackbuffer, sizeof(ack_buffer),tcpd_client_adress_send);
+		
 	}
 	
 	//mm = SEND2D(tcpd_troll_socket_send,tcpd_tcpds_socket_listen,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send, tcpd_tcpds_adress_recv);
@@ -204,6 +215,8 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		mm = RECV(tcpd_tcpds_socket_listen, (char *)ack2buffer, sizeof(ack2_buffer) ,tcpd_tcpds_adress_recv , tcpd_tcpds_adress_recv_len);
 		printf("TCPD Client: Received ack for %d \n",ack2buffer->seq_no);
 		
+		ack_data(cb, (int)ack2buffer->seq_no, sizeof(send_buffer));
+		
 		gettimeofday(&ack_time,NULL);
 		sent_time = ack2buffer->time;
 		
@@ -213,14 +226,15 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		if (ack2buffer->seq_no < 1)
 			{ initialize_srtt_rttvar(rtt); }
 	
-		rto = computeRTO();
-		rto = max2(rto,10);
+		rto = max2(computeRTO(),5);
+		
 		printf("RTO computed is  %d\n", rto);
 		// Send message to timer about acknowlegdement of a packet number
 		timer_msg_ack.seq = (long)ack2buffer->seq_no; 
 		timer_msg_ack.type = 'c';
 		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_ack, sizeof(Timer_message), tcpd_timer_adress_send); 
-		ack_no++;		
+		ack_no++;
+		file_size_acknowleged += sizeof(send_buffer);		
 	}
 	
 	// Messages from Timer tcpd_timer_socket_listen
@@ -229,20 +243,40 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		mm =  RECV(tcpd_timer_socket_listen, (char *)&timer_msg_recv, sizeof(Timer_message) ,tcpd_timer_adress_recv , tcpd_timer_adress_recv_len);
 		printf("TCPD Client: Received message for Retransmission for sequence no -- %lu \n",timer_msg_recv.seq); 
 		
+		// Retransmit the message
+		get_data_index(cb,(char *)&tr_msg.body, (int)timer_msg_recv.seq, sizeof(send_buffer));		
+		tr_msg.seq_no = (int)timer_msg_recv.seq;
+		gettimeofday(&sent_time,NULL);
+		tr_msg.time = sent_time;
+		tr_msg.checksum =  crcFast((char *)&tr_msg.body,sizeof(tr_msg.body));
+		
+		mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send);
+		printf("TCPD Client: Retransmission --> Sent packet for  %d \n",packet_count); 
+		
+		// Send timer message 
+		timer_msg_send.seq = timer_msg_recv.seq;
+		timer_msg_ack.time = rto;
+		timer_msg_ack.type = 's';
+		mm = SEND(tcpd_timer_socket_send,(char *)&timer_msg_send, sizeof(Timer_message), tcpd_timer_adress_send);
+		printf("TCPD Client: Retransmission --> Sent timer message for  %lu \n",timer_msg_send.seq); 
+		
 	}
 	
-	int usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
-	printf( " value of usd is 	%d\n",usd);
+	usd = cb_pop_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
+	printf( "TCPD Client: Collecting data from buffer to be sent to server, available buffer is	%d\n",usd);
 	if (usd >= 0)
 		{
-		
 		tr_msg.seq_no = packet_count;
 		gettimeofday(&sent_time,NULL);
 		tr_msg.time = sent_time;
+		memcpy(&tr_msg.body, recvbuffer, sizeof(tr_msg.body));
+		//tr_msg.checksum =  crcFast((char *)&tr_msg.body,sizeof(tr_msg.body));
 		
 		mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg ,sizeof(troll_message), tcpd_troll_adress_send);
 		printf("TCPD Client: Sent packet for  %d \n",packet_count); 
-		
+		printf("TCPD: %s \n", recvbuffer->data);
+		printf("TCPD: %d \n", tr_msg.seq_no);
+
 		timer_msg_send.seq = (long)packet_count;
 		timer_msg_ack.time = rto;
 		timer_msg_ack.type = 's';
@@ -251,7 +285,36 @@ retval = select(max_sd, &readset, NULL, NULL, &tv);
 		printf("TCPD Client: Sent timer message for  %lu \n",timer_msg_send.seq); 
 		packet_count++;
 		}
+	
+	if ( file_size_acknowleged >= complete_file_size)
+	{
+		printf("TCPD Client: acked  %d , file size is %d \n",file_size_acknowleged, complete_file_size);
+		printf("TCPD Client: Completed file transfer , every message is acknowleded \n");
+		break;
+	}
+	
 	printf("-------->>>>>>TCPD CLient<<<<<<<<<<----------\n");
 	usleep(100);	
-	}
+}
+// Clear all buffers
+
+printf("TCPD Client: De allocating memory (free all) of all the memory buffers\n"); 
+free(cb);
+free(ackbuffer);
+free(ack2buffer);
+free(recvbuffer);
+
+}
+// Shutdown Behaviour, needs tp close all the sockets
+
+printf("TCPD Client: Closing the sockets\n");
+close(tcpd_client_socket_send); 
+close(tcpd_client_socket_listen);
+close(tcpd_troll_socket_send);
+close(tcpd_tcpds_socket_listen);
+close(tcpd_timer_socket_send);
+close(tcpd_timer_socket_listen);
+
+printf("TCPD Client: Shutdown successful\n");
+
 }

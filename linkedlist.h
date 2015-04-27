@@ -219,7 +219,6 @@ int check_and_update_head_value(linked_list * A, int socket, struct sockaddr_in 
 	 }
 }
 
-
 void delete_node_of_seq_no(linked_list * A, long seq_no)
 {
 
@@ -262,4 +261,6 @@ void delete_node_of_seq_no(linked_list * A, long seq_no)
 		}						
 	//printf(" The linked list could not find element\n");
 }
+
+
 

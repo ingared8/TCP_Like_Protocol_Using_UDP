@@ -9,7 +9,9 @@
 #include <unistd.h>
 #include <netdb.h>
 #include "genlib.h"
-#include "circular_buffer.h"
+#include "CB_server.h"
+#include "crc.c"
+
 
 // This program is to create a file transfer protocol server
 
@@ -53,36 +55,44 @@ check_bind(bind_id, "TCPD-Server receiving socket", "TCPD Server");
 int bind_id2 = BIND(tcpd_tcpdc_socket_listen, tcpd_troll_adress_recv);
 check_bind(bind_id2, "TCPD-Troll receiving socket", "TCPD Server");
 
-// Create a cyclic buffer and create the read and write pointers
-circular_buffer * cb = malloc(sizeof(circular_buffer));
-ring_buffer_init(cb, RING_BUFFER_SIZE);
+
+while ( 1==1 )
+{
 
 // Start listening for packets 
 ack_buffer * ackbuffer = malloc(sizeof(ack_buffer));
 ack2_buffer * ack2buffer = malloc(sizeof(ack2_buffer));
+
 //send_buffer * sendbuffer = malloc(sizeof(send_buffer));
 first_message * first_msg = malloc(sizeof(first_message));
 char * sendbuffer = malloc(sizeof(send_buffer));
 troll_message tr_msg;		// Recv from TCPDC
 troll_message tr_msg2; 	   // Send to TCPDC
 
+// Create a cyclic buffer and create the read and write pointers
+circular_buffer_s * cb = malloc(sizeof(circular_buffer_s));
+ring_buffer_init_s(cb);
+
+// Wait for connection from Client
+printf("TCPD Server: Waiting for Connection \n");
+
 // First packet 
-printf("TCPD Server: Read the first message\n");
 int mm =  RECV(tcpd_tcpdc_socket_listen, (char *)&tr_msg, sizeof(troll_message),tcpd_troll_adress_recv, tcpd_troll_adress_recv_len);
-printf("TCPD Server :packet_count %d \n",packet_count);
+printf("TCPD Server: Forwarding request to server \n");
 memcpy(first_msg,&tr_msg.body,sizeof(first_message));
 mm = SEND(tcpd_server_socket_send,(char *)first_msg, sizeof(first_message),tcpd_server_adress_send); 
+printf("TCPD Server: Connection successful \n");
 
 // Know the IP adress and port number of server
-printf(" The first message, file_size is %d \n", first_msg->file_size);
-printf(" The first message, port no is %d \n", first_msg->server_port);	
-printf(" The first message, server_ip %s \n", first_msg->server_ip);
+printf("TCPD Server: File_size is %d \n", first_msg->file_size);
+printf("TCPD Server: Port no is %d \n", first_msg->server_port);	
+printf("TCPD Server: Server_ip %s \n", first_msg->server_ip);
 
 // Modify the port of the client adress
-//tr_msg2.header = get_sockaddr_send_troll(PORT_NUM_OUT_TCPDC);
 tr_msg2 = tr_msg;
 tr_msg2.header.sin_port = htons(PORT_NUM_OUT_TCPDC);
 ack2buffer->header = tr_msg2.header;
+tcpd_server_adress_send.sin_port = htons(first_msg->server_port);
 
 // Create the header file to add to messages to troll
 mm = SEND(tcpd_troll_socket_send,(char *)&tr_msg2, sizeof(troll_message),tcpd_troll_adress_send); 
@@ -94,8 +104,8 @@ int usd;
 int seq = 0;
 int file_size_sent_to_client = 0;
 int remaining_file_size = first_msg->file_size;
-int packet_count_server = 1;
-int packet_count_troll = 1;
+int packet_count_server = 0;
+int packet_count_troll = 0;
 int buffer_size = sizeof(send_buffer);
 
 // Params for Select
@@ -133,58 +143,68 @@ while(1==1)
 		printf("TCPD Server : Received packet from Client with packet_count  as %d \n",packet_count_troll);
 		mm =  RECV(tcpd_tcpdc_socket_listen, (char *)&tr_msg, sizeof(troll_message),tcpd_troll_adress_recv, tcpd_troll_adress_recv_len);
 		
-		int rem = cb_push_data(cb, (char *)&tr_msg.body, sizeof(tr_msg.body));
-		// Send ack for ftpc/client with remaining size
-		if (rem > 0)
-			{
-				ack2buffer->seq_no = tr_msg.seq_no; 
-				ack = SEND(tcpd_troll_socket_send, (char*)ack2buffer, sizeof(ack2_buffer),tcpd_troll_adress_send);
-				printf(" TCPD Server: Ack sent for packet %d \n",packet_count_troll);
-				packet_count_troll++;
-			}
-
-	}
-
-
-	// Prepare data from buffer for troll to client
-	//if FD_ISSET(tcpd_server_socket_listen, &readset)
-	
+		// Check for packet checksum
 		
-	int usd = cb_pop_data(cb, (char *)sendbuffer, sizeof(send_buffer));	
+		//if (tr_msg.checksum ==  crcFast((char *)&tr_msg.body,sizeof(tr_msg.body)) )
+		if ( 1==1)
+		{
+			int rem = cb_push_data_s(cb, (char *)&tr_msg.body, sizeof(tr_msg.body), tr_msg.seq_no);
+			// Send ack for ftpc/client with remaining size
+			if (rem >= 0)
+				{
+					ack2buffer->seq_no = tr_msg.seq_no; 
+					ack = SEND(tcpd_troll_socket_send, (char*)ack2buffer, sizeof(ack2_buffer),tcpd_troll_adress_send);
+					printf(" TCPD Server: Ack sent for packet %d \n",packet_count_troll);
+					packet_count_troll++;
+				}
+		}
+		else
+		{
+			printf("TCPD Server: Packet garbled for packet no %d \n", tr_msg.seq_no);
+		}	
+	}
+		
+	usd = cb_pop_data_s(cb, (char *)sendbuffer, sizeof(send_buffer), packet_count_server);	
 	if (usd >= 0)
 	{
-	ack = SEND(tcpd_server_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_server_adress_send);
-	printf("TCPD Server : Sent data to Server for packet no %d with size  %d \n",packet_count_server , buffer_size);	
-	mm = RECV(tcpd_server_socket_listen, (char *)ackbuffer, sizeof(ack_buffer),tcpd_server_adress_recv, tcpd_server_adress_recv_len);
-	
-	file_size_sent_to_client += ackbuffer->free_size;
-	remaining_file_size -= ackbuffer->free_size;
-	packet_count_server++;
+		ack = SEND(tcpd_server_socket_send,(char *)sendbuffer, sizeof(send_buffer), tcpd_server_adress_send);
+		printf("TCPD Server : Sent data to Server for packet no %d with size  %d \n",packet_count_server , buffer_size);	
+		mm = RECV(tcpd_server_socket_listen, (char *)ackbuffer, sizeof(ack_buffer),tcpd_server_adress_recv, tcpd_server_adress_recv_len);
+		file_size_sent_to_client += ackbuffer->free_size;
+		remaining_file_size -= ackbuffer->free_size;
+		packet_count_server++;
+		printf("TCPD Server: Remaining file size is %d\n",remaining_file_size);
+		printf("TCPD Server: Jaffa and Gagan\n");
+		printf("TCPD: %s \n", sendbuffer);
 	}
 	
 	// Closing function call-- send last packet and close the sockets 
-	if (remaining_file_size <= sizeof(send_buffer))
+
+	if ( file_size_sent_to_client >= first_msg->file_size)
 	{
-		if (cb_pop_data(cb, (char *)sendbuffer, remaining_file_size) > 0)
-		{	
-			ack = SEND(tcpd_server_socket_send,(char *)sendbuffer, remaining_file_size, tcpd_server_adress_send);
-			printf("TCPD Server : Sent data to Server for packet no %d with size  %d \n",packet_count_server , remaining_file_size);	
-			mm = RECV(tcpd_server_socket_listen, (char *)ackbuffer, sizeof(ack_buffer),tcpd_server_adress_recv, tcpd_server_adress_recv_len);
-			printf("TCPD Server : Received acknowledge from Server for packet_no  %d of data size  %d\n", packet_count_server,ackbuffer->free_size );
-			printf("TCPD Server: Last packet Sent and  ack Received for Last packet, exiting the loop\n");
-			break;
-		}
+		printf("TCPD Server: Completed file transfer , every message is sent to server \n");
+		break;
 	}
+	
 	printf("------------TCPD Server-----------------\n");
+	usleep(100);
 	}
 	
-	// Closing the sockets 
+	// Clear all the buffers
+	printf("TCPD Server: De allocating memory (free all) of all the memory buffers\n"); 
+	free(cb);
+	free(ackbuffer);
+	free(ack2buffer);
+	free(sendbuffer);
 	
+}
+
+	// Shutdown started  and Closing the sockets
 	close(tcpd_server_socket_listen);
 	close(tcpd_server_socket_send);
 	close(tcpd_troll_socket_send);
 	close(tcpd_tcpdc_socket_listen);
 	printf("TCPD Server: The sockets are closed\n");
-	//usleep(1000);
-}
+	printf("TCPD Server: Shutdown successful\n");
 
+}
